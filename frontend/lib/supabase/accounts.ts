@@ -26,6 +26,7 @@ export async function ensureAccountExists(accountData: AccountData) {
     status: accountData.status || 'ACTIVE',
     is_active: accountData.is_active !== false,
     timezone_name: 'UTC',
+    created_at: new Date().toISOString(),
     updated_at: new Date().toISOString()
   }
 

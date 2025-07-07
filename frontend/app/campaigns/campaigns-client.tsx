@@ -7,7 +7,7 @@ import { MetaAPI, Campaign, MetaAdAccount } from '@/lib/api/meta'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { AccountSelector } from '@/components/ui/account-selector'
 import { createClient } from '@/lib/supabase/client'
-import { ensureAccountExists } from '@/lib/supabase/accounts'
+import { saveAccountSimple } from '@/lib/api/accounts-simple'
 import { 
   RefreshCw, 
   Pause, 
@@ -77,9 +77,9 @@ export function CampaignsClient() {
       
       // Ensure the account exists in our database
       try {
-        await ensureAccountExists(selectedAccountData)
+        await saveAccountSimple(selectedAccountData)
       } catch (e) {
-        console.error('Failed to ensure account exists:', e)
+        console.error('Failed to save account:', e)
         // Continue anyway - we can still try to load campaigns
       }
       
