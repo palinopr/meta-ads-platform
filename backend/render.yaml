@@ -3,7 +3,7 @@ services:
     name: meta-ads-backend
     runtime: python
     buildCommand: "pip install -r requirements.txt"
-    startCommand: "python run.py"
+    startCommand: "gunicorn main:app -c gunicorn_config.py"
     envVars:
       - key: DATABASE_URL
         value: postgresql://postgres.igeuyfuxezvvenxjfnnn:Ai7v+%~%vDN.n"mD@aws-0-us-east-1.pooler.supabase.com:5432/postgres
