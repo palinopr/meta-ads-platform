@@ -34,7 +34,7 @@ export function CampaignsClient() {
 
   useEffect(() => {
     if (selectedAccount) {
-      loadCampaigns()
+      syncAndLoadCampaigns()
     }
   }, [selectedAccount])
 
@@ -54,6 +54,27 @@ export function CampaignsClient() {
       setError(error.message || 'Failed to load ad accounts. Please reconnect your Meta account.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const syncAndLoadCampaigns = async () => {
+    if (!selectedAccount) return
+
+    try {
+      setLoadingCampaigns(true)
+      setError(null)
+      
+      // First sync campaigns from Meta API
+      await api.syncAccount(selectedAccount)
+      
+      // Then load the campaigns
+      const data = await api.getCampaigns(selectedAccount)
+      setCampaigns(data)
+    } catch (error: any) {
+      console.error('Failed to sync/load campaigns:', error)
+      setError(error.message || 'Failed to load campaigns')
+    } finally {
+      setLoadingCampaigns(false)
     }
   }
 

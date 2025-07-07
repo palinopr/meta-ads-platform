@@ -60,7 +60,7 @@ export class MetaAPI {
   }
 
   async syncAccount(accountId: string): Promise<void> {
-    const { data, error } = await this.supabase.functions.invoke('meta-sync', {
+    const { data, error } = await this.supabase.functions.invoke('sync-campaigns', {
       body: { account_id: accountId }
     })
 
@@ -69,21 +69,35 @@ export class MetaAPI {
       throw error
     }
 
+    if (data?.error) {
+      if (data.tokenExpired) {
+        throw new Error('Meta token expired. Please reconnect your account.')
+      }
+      throw new Error(data.error)
+    }
+
     return data
   }
 
   async getCampaigns(accountId: string): Promise<Campaign[]> {
+    // First, get the meta_ad_account id for this account_id
+    const { data: adAccount, error: adAccountError } = await this.supabase
+      .from('meta_ad_accounts')
+      .select('id')
+      .eq('account_id', accountId)
+      .single()
+
+    if (adAccountError || !adAccount) {
+      console.error('Error fetching ad account:', adAccountError)
+      return []
+    }
+
+    // Then fetch campaigns for this ad account
     const { data, error } = await this.supabase
       .from('campaigns')
-      .select(`
-        *,
-        meta_ad_accounts!inner(
-          id,
-          account_id,
-          user_id
-        )
-      `)
-      .eq('meta_ad_accounts.account_id', accountId)
+      .select('*')
+      .eq('ad_account_id', adAccount.id)
+      .order('created_time', { ascending: false })
 
     if (error) {
       console.error('Error fetching campaigns:', error)

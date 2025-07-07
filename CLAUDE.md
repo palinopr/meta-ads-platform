@@ -7,15 +7,16 @@ A comprehensive analytics and optimization platform for Meta advertising campaig
 - ✅ **Frontend deployed** at https://frontend-ten-eta-42.vercel.app
 - ✅ **User authentication working** - Email/password signup and login
 - ✅ **Dashboard UI complete** - Shows metrics cards and layout
-- ✅ **Supabase Edge Functions deployed** - meta-accounts, meta-sync, handle-meta-oauth, sync-meta-token, check-meta-connection
+- ✅ **Supabase Edge Functions deployed** - meta-accounts-v2, sync-campaigns, sync-meta-token, check-meta-connection
 - ✅ **Facebook OAuth configured** - In Supabase auth providers
 - ✅ **Settings page** - Connect/disconnect Meta account
-- ✅ **Campaigns page** - Account selection dropdown for 200+ accounts
+- ✅ **Campaigns page** - Searchable account selector for 200+ accounts
 - ✅ **Privacy Policy & Terms** - Compliance pages for Facebook
 - ✅ **Meta token storage FIXED** - OAuth tokens properly persisting to database
 - ✅ **Test Meta page** - Debug tool at /test-meta for OAuth troubleshooting
 - ✅ **Pagination support** - Handles 200+ ad accounts efficiently
-- 🟡 **Real data sync** - Edge Functions ready, need to implement campaign fetching
+- ✅ **Real campaign sync** - Fetches actual campaigns from Meta API
+- ✅ **Searchable dropdowns** - Type to search through 200+ accounts
 
 ### 🎯 Core Features
 - **Real-time Analytics Dashboard** - Track ROAS, CTR, CPC, CPM, conversions across all campaigns
@@ -280,7 +281,9 @@ uvicorn main:app --reload
 - `frontend/app/campaigns/campaigns-client.tsx` - Campaign management with account selection
 - `frontend/app/settings/settings-client.tsx` - Meta OAuth connection
 - `frontend/app/test-meta/page.tsx` - OAuth debugging tool
-- `supabase/functions/meta-accounts/` - Fetches ad accounts with pagination
+- `frontend/components/ui/account-selector.tsx` - Reusable searchable account dropdown
+- `supabase/functions/meta-accounts-v2/` - Simplified ad account fetching
+- `supabase/functions/sync-campaigns/` - Syncs campaigns from Meta API
 - `supabase/functions/sync-meta-token/` - Syncs OAuth token from session
 - `supabase/functions/check-meta-connection/` - Verifies Meta connection
 - `supabase/migrations/` - Database schema
@@ -296,12 +299,21 @@ uvicorn main:app --reload
 4. Token now properly saves to `profiles.meta_access_token`
 
 #### Large Account Set Handling
-**Problem**: User has 200+ ad accounts causing timeouts
+**Problem**: User has 200+ ad accounts causing timeouts and poor UX
 **Solution**:
-1. Added pagination to `meta-accounts` Edge Function (100 accounts per page)
-2. Implemented batch inserts (50 accounts at a time)
-3. Added account selection dropdown with search capability
-4. Cache accounts in database to avoid repeated API calls
+1. Created `meta-accounts-v2` simplified Edge Function
+2. Built custom searchable `AccountSelector` component
+3. Added search by name, ID, or currency
+4. Groups accounts by active/inactive status
+5. Shows rich info with icons and badges
+
+#### Campaign Loading Fix
+**Problem**: Schema cache error when joining campaigns with meta_ad_accounts
+**Solution**:
+1. Fixed query to use proper foreign key relationship
+2. Created `sync-campaigns` Edge Function to fetch from Meta API
+3. Auto-syncs campaigns when account is selected
+4. Handles Meta API pagination and rate limits
 
 ### 🎓 Lessons Learned & Important Notes
 
