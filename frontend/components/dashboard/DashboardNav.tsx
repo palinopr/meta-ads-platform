@@ -15,12 +15,12 @@ import {
 
 const navigation = [
   { name: 'Overview', href: '/dashboard', icon: Home },
-  { name: 'Campaigns', href: '/dashboard/campaigns', icon: Megaphone },
+  { name: 'Campaigns', href: '/campaigns', icon: Megaphone },
   { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
   { name: 'Budget', href: '/dashboard/budget', icon: DollarSign },
   { name: 'Reports', href: '/dashboard/reports', icon: FileText },
   { name: 'Clients', href: '/dashboard/clients', icon: Users },
-  { name: 'Settings', href: '/dashboard/settings', icon: Settings },
+  { name: 'Settings', href: '/settings', icon: Settings },
 ]
 
 export function DashboardNav() {
