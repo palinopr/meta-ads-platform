@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { MetaAPI, Campaign, MetaAdAccount } from '@/lib/api/meta'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { AccountSelector } from '@/components/ui/account-selector'
+import { createClient } from '@/lib/supabase/client'
 import { 
   RefreshCw, 
   Pause, 
@@ -34,7 +35,7 @@ export function CampaignsClient() {
 
   useEffect(() => {
     if (selectedAccount) {
-      syncAndLoadCampaigns()
+      ensureAccountAndLoadCampaigns()
     }
   }, [selectedAccount])
 
@@ -54,6 +55,66 @@ export function CampaignsClient() {
       setError(error.message || 'Failed to load ad accounts. Please reconnect your Meta account.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const ensureAccountAndLoadCampaigns = async () => {
+    if (!selectedAccount) return
+
+    try {
+      setLoadingCampaigns(true)
+      setError(null)
+      
+      // Find the selected account details
+      const selectedAccountData = adAccounts.find(acc => acc.account_id === selectedAccount)
+      if (!selectedAccountData) {
+        setError('Account details not found')
+        return
+      }
+      
+      console.log('Selected account:', selectedAccountData)
+      
+      // Ensure the account exists in our database
+      const { data: { user } } = await createClient().auth.getUser()
+      if (user) {
+        try {
+          // Try to insert/update the account in our database
+          const { error: upsertError } = await createClient()
+            .from('meta_ad_accounts')
+            .upsert({
+              user_id: user.id,
+              account_id: selectedAccountData.account_id,
+              account_name: selectedAccountData.account_name,
+              currency: selectedAccountData.currency || 'USD',
+              status: selectedAccountData.status || 'ACTIVE',
+              is_active: selectedAccountData.is_active !== false,
+              updated_at: new Date().toISOString()
+            }, {
+              onConflict: 'account_id,user_id'
+            })
+          
+          if (upsertError) {
+            console.error('Error upserting account:', upsertError)
+          } else {
+            console.log('Account ensured in database')
+          }
+        } catch (e) {
+          console.error('Failed to ensure account:', e)
+        }
+      }
+      
+      // Load campaigns (even if account insert failed)
+      const data = await api.getCampaigns(selectedAccount)
+      setCampaigns(data)
+      
+      if (data.length === 0) {
+        setError('No campaigns found. This account might not have any campaigns yet.')
+      }
+    } catch (error: any) {
+      console.error('Failed to load campaigns:', error)
+      setError(error.message || 'Failed to load campaigns')
+    } finally {
+      setLoadingCampaigns(false)
     }
   }
 
@@ -150,7 +211,7 @@ export function CampaignsClient() {
           )}
           <Button 
             variant="outline" 
-            onClick={selectedAccount ? loadCampaigns : loadAdAccounts}
+            onClick={selectedAccount ? ensureAccountAndLoadCampaigns : loadAdAccounts}
             disabled={loadingCampaigns}
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${loadingCampaigns ? 'animate-spin' : ''}`} />
