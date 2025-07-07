@@ -5,11 +5,15 @@ A comprehensive analytics and optimization platform for Meta advertising campaig
 
 ### 📍 Current State (Jan 2025)
 - ✅ **Frontend deployed** at https://frontend-ten-eta-42.vercel.app
-- ✅ **User authentication working** - Users can sign up and log in
+- ✅ **User authentication working** - Email/password signup and login
 - ✅ **Dashboard UI complete** - Shows metrics cards and layout
-- 🟡 **Supabase Edge Functions created** - Need deployment
-- 🟡 **Facebook OAuth pending** - Need to configure in Supabase
-- 🟡 **Real data integration pending** - After Edge Functions deployment
+- ✅ **Supabase Edge Functions deployed** - meta-accounts, meta-sync, handle-meta-oauth
+- ✅ **Facebook OAuth configured** - In Supabase auth providers
+- ✅ **Settings page** - Connect/disconnect Meta account
+- ✅ **Campaigns page** - View campaigns after Meta connection
+- ✅ **Privacy Policy & Terms** - Compliance pages for Facebook
+- 🟡 **Meta token storage** - Working on proper OAuth token persistence
+- 🟡 **Real data sync** - Ready to implement after token storage fixed
 
 ### 🎯 Core Features
 - **Real-time Analytics Dashboard** - Track ROAS, CTR, CPC, CPM, conversions across all campaigns
@@ -89,11 +93,11 @@ meta-ads-platform/
 
 ### 🚀 Current Deployment Status
 - **Frontend**: ✅ Live at https://frontend-ten-eta-42.vercel.app
-- **Database**: ✅ Supabase configured with auth and profiles
-- **Authentication**: ✅ Email/password working, Facebook OAuth pending setup
-- **Backend**: ✅ Using Supabase Edge Functions (no separate backend needed!)
-- **Edge Functions**: 🟡 Ready to deploy (meta-accounts, meta-sync)
+- **Database**: ✅ Supabase with profiles, meta_ad_accounts, campaigns tables
+- **Authentication**: ✅ Email/password and Facebook OAuth configured
+- **Edge Functions**: ✅ Deployed (meta-accounts, meta-sync, handle-meta-oauth)
 - **GitHub Repository**: ✅ https://github.com/palinopr/meta-ads-platform
+- **Supabase Project**: ✅ igeuyfuxezvvenxjfnnn
 
 ### 🔄 Development Guidelines
 - **Always check `TASK.md`** for current development tasks
@@ -128,21 +132,23 @@ All tables have:
 - **HTTPS Only**: Enforced on all deployments
 - **Input Validation**: Pydantic models for all API inputs
 
-### 📈 API Endpoints
+### 📈 API Endpoints (Supabase Edge Functions)
 ```
-# Authentication
-POST   /api/auth/register     - User registration
-POST   /api/auth/token       - Login (JWT)
-GET    /api/auth/me          - Current user info
+# Meta Integration Edge Functions
+POST   /functions/v1/meta-accounts      - List/sync ad accounts
+POST   /functions/v1/meta-sync          - Sync campaign data
+POST   /functions/v1/handle-meta-oauth  - Process OAuth callback
 
-# Meta Integration
-GET    /api/meta/accounts    - List ad accounts
-GET    /api/meta/accounts/{id}/campaigns - List campaigns
-GET    /api/meta/campaigns/{id}/metrics  - Get metrics
-POST   /api/meta/sync        - Sync data from Meta
-
-# OAuth Callbacks
-GET    /auth/callback        - Supabase OAuth callback
+# Frontend Routes
+GET    /                     - Landing page
+GET    /login               - User login
+GET    /signup              - User registration
+GET    /dashboard           - Analytics dashboard
+GET    /settings            - Account settings & Meta connection
+GET    /campaigns           - Campaign management
+GET    /privacy             - Privacy policy
+GET    /terms               - Terms of service
+GET    /auth/callback       - OAuth callback handler
 ```
 
 ### 🧪 Testing Requirements
@@ -175,14 +181,16 @@ GET    /auth/callback        - Supabase OAuth callback
 ```
 
 ### 🚦 Next Development Steps
-1. **Deploy Edge Functions**: Run `supabase functions deploy` for meta-accounts and meta-sync
-2. **Facebook OAuth Setup**: Enable Facebook provider in Supabase Auth
+1. **Fix Meta Token Storage**: Debug why Facebook OAuth token isn't persisting properly
+2. **Implement Data Sync**: Use stored tokens to fetch real campaign data
 3. **Campaign Management**: Add create/edit/pause campaign features
-4. **Budget Optimization**: Implement automated budget redistribution
-5. **Advanced Analytics**: Add charts, export, and custom date ranges
-6. **Alerts & Notifications**: Budget alerts, performance notifications
-7. **A/B Testing Tools**: Create and analyze split tests
-8. **Reporting Module**: Scheduled reports with PDF export
+4. **Real-time Charts**: Add Recharts for performance visualization
+5. **Budget Optimization**: Implement automated budget redistribution
+6. **Export Features**: CSV/PDF export for reports
+7. **Webhook Integration**: Real-time updates from Meta
+8. **Multi-Account Support**: Handle multiple Meta ad accounts
+9. **AI Insights**: OpenAI integration for optimization suggestions
+10. **White Label**: Custom branding for agencies
 
 ### 📈 Performance Targets
 - **Dashboard Load**: < 2 seconds
@@ -208,12 +216,16 @@ uvicorn main:app --reload
 ```
 
 ### 🐛 Known Issues & TODOs
+- [ ] Facebook OAuth token not persisting to profiles.meta_access_token
+- [ ] Need to implement actual Meta API data fetching in Edge Functions
 - [ ] Add comprehensive error boundaries in React
 - [ ] Implement request retry logic for Meta API
-- [ ] Add data export functionality
+- [ ] Add loading skeletons for better UX
 - [ ] Create onboarding flow for new users
-- [ ] Implement webhook handlers for real-time updates
-- [ ] Add multi-language support
+- [ ] Add pagination for campaigns list
+- [ ] Implement date range picker for metrics
+- [ ] Add export functionality (CSV/PDF)
+- [ ] Create admin panel for agency owners
 
 ### 📞 Support & Resources
 - **Supabase Dashboard**: https://app.supabase.com/project/igeuyfuxezvvenxjfnnn

@@ -8,8 +8,36 @@ export async function GET(request: Request) {
 
   if (code) {
     const supabase = await createClient()
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
-    if (!error) {
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+    
+    if (!error && data.session) {
+      // Check if this is a Facebook OAuth callback
+      const facebookIdentity = data.session.user.identities?.find(
+        identity => identity.provider === 'facebook'
+      )
+      
+      if (facebookIdentity) {
+        // The provider_token is available in the session
+        const providerToken = data.session.provider_token
+        const providerRefreshToken = data.session.provider_refresh_token
+        
+        if (providerToken) {
+          // Update the user's profile with the Meta access token
+          const { error: updateError } = await supabase
+            .from('profiles')
+            .update({
+              meta_access_token: providerToken,
+              meta_user_id: facebookIdentity.id,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', data.session.user.id)
+          
+          if (updateError) {
+            console.error('Error updating profile with Meta token:', updateError)
+          }
+        }
+      }
+      
       return NextResponse.redirect(`${origin}${next}`)
     }
   }

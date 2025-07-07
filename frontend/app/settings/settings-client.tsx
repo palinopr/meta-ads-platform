@@ -27,51 +27,58 @@ export function SettingsClient({ user, profile }: SettingsClientProps) {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
   const [currentProfile, setCurrentProfile] = useState(profile)
+  const [verifyingConnection, setVerifyingConnection] = useState(false)
   const supabase = createClient()
   const router = useRouter()
 
-  // Check for Facebook identity in user object
+  // Check if we just returned from OAuth and refresh profile
   useEffect(() => {
-    const checkFacebookConnection = async () => {
-      try {
-        // Get the current session
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-        
-        if (sessionError || !session) return
-
-        // Check if user has Facebook identity
-        const facebookIdentity = session.user.identities?.find(
-          identity => identity.provider === 'facebook'
-        )
-
-        if (facebookIdentity && !currentProfile?.meta_access_token) {
-          // User has Facebook identity but profile hasn't been updated
-          setMessage({ type: 'success', text: 'Updating Meta connection...' })
+    const checkForUpdate = async () => {
+      const params = new URLSearchParams(window.location.search)
+      // If we're coming back from OAuth, refresh the profile
+      if (params.has('oauth_success')) {
+        setVerifyingConnection(true)
+        try {
+          // Wait a moment for the OAuth callback to complete
+          await new Promise(resolve => setTimeout(resolve, 2000))
           
-          // Update profile with Facebook data
+          // Try to sync the Meta token from the session
+          const { data: syncData, error: syncError } = await supabase.functions.invoke('sync-meta-token')
+          
+          if (syncError) {
+            console.error('Error syncing Meta token:', syncError)
+          }
+          
+          // Fetch the latest profile data
           const { data, error } = await supabase
             .from('profiles')
-            .update({
-              meta_user_id: facebookIdentity.id,
-              meta_access_token: 'connected', // We'll use a flag for now
-              updated_at: new Date().toISOString()
-            })
+            .select('*')
             .eq('id', user.id)
-            .select()
             .single()
-
+          
           if (!error && data) {
             setCurrentProfile(data)
-            setMessage({ type: 'success', text: 'Meta account connected successfully!' })
+            if (data.meta_access_token) {
+              setMessage({ type: 'success', text: 'Meta account connected successfully!' })
+            } else {
+              setMessage({ type: 'error', text: 'Failed to connect Meta account. Please try again.' })
+            }
           }
+        } catch (error) {
+          console.error('Error refreshing profile:', error)
+          setMessage({ type: 'error', text: 'Failed to verify Meta connection.' })
+        } finally {
+          setVerifyingConnection(false)
         }
-      } catch (error) {
-        console.error('Error checking Facebook connection:', error)
+        
+        // Clean up URL
+        const newUrl = window.location.pathname
+        window.history.replaceState({}, '', newUrl)
       }
     }
 
-    checkFacebookConnection()
-  }, [user.id, currentProfile?.meta_access_token])
+    checkForUpdate()
+  }, [user.id])
 
   const handleConnectMeta = async () => {
     setLoading(true)
@@ -82,7 +89,7 @@ export function SettingsClient({ user, profile }: SettingsClientProps) {
         provider: 'facebook',
         options: {
           scopes: 'email,ads_management,ads_read,business_management',
-          redirectTo: `${window.location.origin}/auth/callback?next=/settings`,
+          redirectTo: `${window.location.origin}/auth/callback?next=/settings?oauth_success=true`,
         },
       })
 
@@ -122,6 +129,17 @@ export function SettingsClient({ user, profile }: SettingsClientProps) {
   }
 
   const isMetaConnected = currentProfile?.meta_access_token !== null
+
+  if (verifyingConnection) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p>Verifying Meta account connection...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex-1 space-y-4 p-8 pt-6">
