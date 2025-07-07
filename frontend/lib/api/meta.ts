@@ -61,13 +61,33 @@ export class MetaAPI {
 
   async syncAccount(accountId: string): Promise<void> {
     try {
-      // For now, just log that we would sync
-      console.log('Would sync account:', accountId)
-      // Skip the actual sync since the Edge Function isn't working
-      return
+      console.log('Syncing campaigns for account:', accountId)
+      
+      const { data, error } = await this.supabase.functions.invoke('sync-campaigns', {
+        body: { account_id: accountId }
+      })
+      
+      if (error) {
+        console.error('Error syncing campaigns:', error)
+        throw error
+      }
+      
+      if (data?.error) {
+        console.error('Sync API returned error:', data.error)
+        if (data.tokenExpired) {
+          throw new Error('Token expired. Please reconnect your Meta account.')
+        }
+        throw new Error(data.error)
+      }
+      
+      console.log('Sync response:', data)
+      
+      if (data?.success) {
+        console.log(`Successfully synced ${data.totalSaved || 0} campaigns`)
+      }
     } catch (error) {
       console.error('Error in syncAccount:', error)
-      // Don't throw, just log the error
+      throw error
     }
   }
 
@@ -80,38 +100,50 @@ export class MetaAPI {
         return []
       }
 
-      // Check if account exists
-      const { data: adAccounts, error: checkError } = await this.supabase
-        .from('meta_ad_accounts')
-        .select('id')
-        .eq('account_id', accountId)
-        .eq('user_id', user.id)
-
-      console.log('Account check:', { accountId, adAccounts, checkError })
-
-      if (checkError) {
-        console.error('Error checking ad account:', checkError)
-        return []
-      }
-
-      if (!adAccounts || adAccounts.length === 0) {
-        console.log('Account not found in database, returning empty campaigns')
-        return []
-      }
-
-      const adAccount = adAccounts[0]
-
-      // Then fetch campaigns for this ad account
+      // Use RPC function to avoid UUID type comparison issues
       const { data, error } = await this.supabase
-        .from('campaigns')
-        .select('*')
-        .eq('ad_account_id', adAccount.id)
-        .order('created_time', { ascending: false })
+        .rpc('get_campaigns_for_account', {
+          p_account_id: accountId,
+          p_user_id: user.id
+        })
 
       if (error) {
         console.error('Error fetching campaigns:', error)
-        // Return empty array instead of throwing
-        return []
+        
+        // Fallback to direct query with explicit casting
+        const { data: adAccounts, error: checkError } = await this.supabase
+          .from('meta_ad_accounts')
+          .select('id')
+          .eq('account_id', accountId)
+          .eq('user_id', user.id)
+
+        console.log('Account check:', { accountId, adAccounts, checkError })
+
+        if (checkError) {
+          console.error('Error checking ad account:', checkError)
+          return []
+        }
+
+        if (!adAccounts || adAccounts.length === 0) {
+          console.log('Account not found in database, returning empty campaigns')
+          return []
+        }
+
+        const adAccount = adAccounts[0]
+
+        // Then fetch campaigns for this ad account
+        const { data: campaigns, error: campaignError } = await this.supabase
+          .from('campaigns')
+          .select('*')
+          .eq('ad_account_id', adAccount.id)
+          .order('created_time', { ascending: false })
+
+        if (campaignError) {
+          console.error('Error fetching campaigns:', campaignError)
+          return []
+        }
+
+        return campaigns || []
       }
 
       return data || []

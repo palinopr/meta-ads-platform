@@ -1,13 +1,17 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { MetaAPI, Campaign, MetaAdAccount } from '@/lib/api/meta'
+import { MetaAPIFixed } from '@/lib/api/meta-fixed'
+import { MetaAPISafe } from '@/lib/api/meta-safe'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { AccountSelector } from '@/components/ui/account-selector'
 import { createClient } from '@/lib/supabase/client'
 import { saveAccountSimple } from '@/lib/api/accounts-simple'
+import { saveAccountViaFunction } from '@/lib/api/accounts-function'
 import { 
   RefreshCw, 
   Pause, 
@@ -22,6 +26,7 @@ import {
 } from 'lucide-react'
 
 export function CampaignsClient() {
+  const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [loadingCampaigns, setLoadingCampaigns] = useState(false)
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
@@ -29,6 +34,8 @@ export function CampaignsClient() {
   const [selectedAccount, setSelectedAccount] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const api = new MetaAPI()
+  const apiFixed = new MetaAPIFixed()
+  const apiSafe = new MetaAPISafe()
 
   useEffect(() => {
     loadAdAccounts()
@@ -77,18 +84,51 @@ export function CampaignsClient() {
       
       // Ensure the account exists in our database
       try {
-        await saveAccountSimple(selectedAccountData)
+        // Try the safe API first (uses secure functions)
+        await apiSafe.saveAccount(selectedAccountData)
+        console.log('Account saved successfully via safe API')
       } catch (e) {
-        console.error('Failed to save account:', e)
-        // Continue anyway - we can still try to load campaigns
+        console.error('Failed to save account via safe API:', e)
+        // Try the function approach
+        try {
+          await saveAccountViaFunction(selectedAccountData)
+        } catch (e2) {
+          console.error('Failed to save account via function:', e2)
+          // Continue anyway - we can still try to load campaigns
+        }
       }
       
-      // Load campaigns (even if account insert failed)
-      const data = await api.getCampaigns(selectedAccount)
-      setCampaigns(data)
+      // Sync campaigns from Meta API (but don't show errors for first load)
+      try {
+        const syncResult = await api.syncAccount(selectedAccount)
+        console.log('Auto-sync result:', syncResult)
+      } catch (syncError: any) {
+        // Silently log sync errors on initial load
+        console.log('Auto-sync skipped:', syncError.message)
+      }
       
-      if (data.length === 0) {
-        setError('No campaigns found. This account might not have any campaigns yet.')
+      // Load campaigns using safe API first
+      let campaignData: Campaign[] = []
+      try {
+        campaignData = await apiSafe.getCampaigns(selectedAccount)
+        setCampaigns(campaignData)
+        console.log('Campaigns loaded via safe API:', campaignData.length)
+      } catch (e) {
+        // Try fixed API
+        console.error('Safe API failed, trying fixed API:', e)
+        try {
+          campaignData = await apiFixed.getCampaigns(selectedAccount)
+          setCampaigns(campaignData)
+        } catch (e2) {
+          // Final fallback to original API
+          console.error('Fixed API failed, trying original:', e2)
+          campaignData = await api.getCampaigns(selectedAccount)
+          setCampaigns(campaignData)
+        }
+      }
+      
+      if (campaignData.length === 0) {
+        setError('No campaigns found. Click "Sync from Meta" to fetch campaigns from your Meta account.')
       }
     } catch (error: any) {
       console.error('Failed to load campaigns:', error)
@@ -109,18 +149,43 @@ export function CampaignsClient() {
       
       // First sync campaigns from Meta API
       try {
-        await api.syncAccount(selectedAccount)
+        const syncResult = await api.syncAccount(selectedAccount)
+        console.log('Sync result:', syncResult)
+        
+        if (syncResult?.totalFetched > 0) {
+          console.log(`Synced ${syncResult.totalSaved} of ${syncResult.totalFetched} campaigns`)
+        }
       } catch (syncError: any) {
         console.error('Sync error:', syncError)
+        if (syncError?.tokenExpired) {
+          setError('Your Meta access token has expired. Please reconnect your account in Settings.')
+          return
+        }
         // Continue to load existing campaigns even if sync fails
       }
       
       // Then load the campaigns
-      const data = await api.getCampaigns(selectedAccount)
-      setCampaigns(data)
+      let campaignData: Campaign[] = []
+      try {
+        campaignData = await apiSafe.getCampaigns(selectedAccount)
+        setCampaigns(campaignData)
+        console.log('Campaigns loaded via safe API:', campaignData.length)
+      } catch (e) {
+        // Try fixed API
+        console.error('Safe API failed, trying fixed API:', e)
+        try {
+          campaignData = await apiFixed.getCampaigns(selectedAccount)
+          setCampaigns(campaignData)
+        } catch (e2) {
+          // Final fallback to original API
+          console.error('Fixed API failed, trying original:', e2)
+          campaignData = await api.getCampaigns(selectedAccount)
+          setCampaigns(campaignData)
+        }
+      }
       
-      if (data.length === 0) {
-        setError('No campaigns found. This account might not have any campaigns or sync might have failed.')
+      if (campaignData.length === 0) {
+        setError('No campaigns found. This account might not have any campaigns.')
       }
     } catch (error: any) {
       console.error('Failed to sync/load campaigns:', error)
@@ -196,6 +261,14 @@ export function CampaignsClient() {
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${loadingCampaigns ? 'animate-spin' : ''}`} />
             Refresh
+          </Button>
+          <Button 
+            variant="outline"
+            onClick={syncAndLoadCampaigns}
+            disabled={!selectedAccount || loadingCampaigns}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${loadingCampaigns ? 'animate-spin' : ''}`} />
+            Sync from Meta
           </Button>
           <Button disabled={!selectedAccount}>Create Campaign</Button>
         </div>
@@ -313,7 +386,11 @@ export function CampaignsClient() {
                       </>
                     )}
                   </Button>
-                  <Button variant="default" size="sm">
+                  <Button 
+                    variant="default" 
+                    size="sm"
+                    onClick={() => router.push(`/campaigns/${campaign.id}`)}
+                  >
                     View Details
                   </Button>
                 </div>

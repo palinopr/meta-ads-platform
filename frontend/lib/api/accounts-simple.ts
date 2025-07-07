@@ -14,6 +14,7 @@ export async function saveAccountSimple(accountData: any) {
   console.log('Account data:', accountData)
 
   // First check if it exists
+  // Note: user.id is already a UUID string, no casting needed on client side
   const { data: existing, error: checkError } = await supabase
     .from('meta_ad_accounts')
     .select('*')

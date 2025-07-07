@@ -177,7 +177,7 @@ serve(async (req) => {
         const { data: batchData, error: batchError } = await supabaseAdmin
           .from('campaigns')
           .upsert(batch, { 
-            onConflict: 'campaign_id',
+            onConflict: 'ad_account_id,campaign_id',
             ignoreDuplicates: false 
           })
           .select()
