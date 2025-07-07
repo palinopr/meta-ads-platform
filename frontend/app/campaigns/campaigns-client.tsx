@@ -4,14 +4,8 @@ import { useEffect, useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { MetaAPI, Campaign, MetaAdAccount } from '@/lib/api/meta'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { AccountSelector } from '@/components/ui/account-selector'
 import { 
   RefreshCw, 
   Pause, 
@@ -114,18 +108,13 @@ export function CampaignsClient() {
         <h2 className="text-3xl font-bold tracking-tight">Campaigns</h2>
         <div className="flex items-center space-x-2">
           {adAccounts.length > 0 && (
-            <Select value={selectedAccount || ''} onValueChange={setSelectedAccount}>
-              <SelectTrigger className="w-[300px]">
-                <SelectValue placeholder="Select an ad account" />
-              </SelectTrigger>
-              <SelectContent>
-                {adAccounts.map((account) => (
-                  <SelectItem key={account.account_id} value={account.account_id}>
-                    {account.account_name} ({account.account_id})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <AccountSelector
+              accounts={adAccounts}
+              value={selectedAccount}
+              onValueChange={setSelectedAccount}
+              placeholder="Select an ad account..."
+              className="w-[450px]"
+            />
           )}
           <Button 
             variant="outline" 
