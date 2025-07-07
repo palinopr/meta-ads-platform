@@ -37,11 +37,23 @@ export class MetaAPI {
   private supabase = createClient()
 
   async getAdAccounts(): Promise<MetaAdAccount[]> {
-    const { data, error } = await this.supabase.functions.invoke('meta-accounts')
+    // Use v2 temporarily for debugging
+    const { data, error } = await this.supabase.functions.invoke('meta-accounts-v2')
     
     if (error) {
       console.error('Error fetching ad accounts:', error)
       throw error
+    }
+
+    // Log the response for debugging
+    console.log('Ad accounts response:', data)
+    
+    if (data?.error) {
+      console.error('API returned error:', data.error)
+      if (data.tokenExpired) {
+        throw new Error('Token expired. Please reconnect your Meta account.')
+      }
+      throw new Error(data.error)
     }
 
     return data?.accounts || []

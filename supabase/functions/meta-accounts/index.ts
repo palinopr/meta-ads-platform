@@ -139,15 +139,24 @@ serve(async (req) => {
         
         for (let i = 0; i < accountsToInsert.length; i += batchSize) {
           const batch = accountsToInsert.slice(i, i + batchSize)
-          const { data: batchData, error: batchError } = await supabaseAdmin
-            .from('meta_ad_accounts')
-            .upsert(batch, { onConflict: 'account_id,user_id' })
-            .select()
-          
-          if (batchError) {
-            console.error(`Error inserting batch ${i / batchSize + 1}:`, batchError)
-          } else if (batchData) {
-            insertedAccounts.push(...batchData)
+          try {
+            const { data: batchData, error: batchError } = await supabaseAdmin
+              .from('meta_ad_accounts')
+              .upsert(batch, { 
+                onConflict: 'account_id,user_id',
+                ignoreDuplicates: false 
+              })
+              .select()
+            
+            if (batchError) {
+              console.error(`Error inserting batch ${i / batchSize + 1}:`, batchError)
+              // Continue with other batches even if one fails
+            } else if (batchData) {
+              insertedAccounts.push(...batchData)
+            }
+          } catch (batchError) {
+            console.error(`Exception in batch ${i / batchSize + 1}:`, batchError)
+            // Continue processing other batches
           }
         }
 
@@ -170,10 +179,23 @@ serve(async (req) => {
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in meta-accounts:', error)
+    
+    // Return more detailed error information
+    const errorResponse = {
+      error: error.message || 'Unknown error occurred',
+      accounts: [],
+      details: error.details || null,
+      hint: error.hint || null,
+      code: error.code || null
+    }
+    
+    // Log full error for debugging
+    console.error('Full error object:', JSON.stringify(error, null, 2))
+    
     return new Response(
-      JSON.stringify({ error: error.message, accounts: [] }),
+      JSON.stringify(errorResponse),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
