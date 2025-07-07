@@ -3,7 +3,15 @@
 import { useEffect, useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { MetaAPI, Campaign } from '@/lib/api/meta'
+import { MetaAPI, Campaign, MetaAdAccount } from '@/lib/api/meta'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { 
   RefreshCw, 
   Pause, 
@@ -12,30 +20,62 @@ import {
   TrendingUp, 
   DollarSign,
   Eye,
-  MousePointerClick
+  MousePointerClick,
+  AlertCircle,
+  Loader2
 } from 'lucide-react'
 
 export function CampaignsClient() {
   const [loading, setLoading] = useState(true)
+  const [loadingCampaigns, setLoadingCampaigns] = useState(false)
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
+  const [adAccounts, setAdAccounts] = useState<MetaAdAccount[]>([])
   const [selectedAccount, setSelectedAccount] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const api = new MetaAPI()
 
   useEffect(() => {
-    loadCampaigns()
+    loadAdAccounts()
+  }, [])
+
+  useEffect(() => {
+    if (selectedAccount) {
+      loadCampaigns()
+    }
   }, [selectedAccount])
+
+  const loadAdAccounts = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const accounts = await api.getAdAccounts()
+      setAdAccounts(accounts)
+      
+      // If only one account, auto-select it
+      if (accounts.length === 1) {
+        setSelectedAccount(accounts[0].account_id)
+      }
+    } catch (error: any) {
+      console.error('Failed to load ad accounts:', error)
+      setError(error.message || 'Failed to load ad accounts. Please reconnect your Meta account.')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const loadCampaigns = async () => {
     if (!selectedAccount) return
 
     try {
-      setLoading(true)
+      setLoadingCampaigns(true)
+      setError(null)
       const data = await api.getCampaigns(selectedAccount)
       setCampaigns(data)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to load campaigns:', error)
+      setError(error.message || 'Failed to load campaigns')
     } finally {
-      setLoading(false)
+      setLoadingCampaigns(false)
     }
   }
 
@@ -57,12 +97,12 @@ export function CampaignsClient() {
     }
   }
 
-  if (loading && campaigns.length === 0) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="text-center">
-          <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p>Loading campaigns...</p>
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p>Loading ad accounts...</p>
         </div>
       </div>
     )
@@ -73,15 +113,68 @@ export function CampaignsClient() {
       <div className="flex items-center justify-between space-y-2">
         <h2 className="text-3xl font-bold tracking-tight">Campaigns</h2>
         <div className="flex items-center space-x-2">
-          <Button variant="outline" onClick={loadCampaigns}>
-            <RefreshCw className="h-4 w-4 mr-2" />
+          {adAccounts.length > 0 && (
+            <Select value={selectedAccount || ''} onValueChange={setSelectedAccount}>
+              <SelectTrigger className="w-[300px]">
+                <SelectValue placeholder="Select an ad account" />
+              </SelectTrigger>
+              <SelectContent>
+                {adAccounts.map((account) => (
+                  <SelectItem key={account.account_id} value={account.account_id}>
+                    {account.account_name} ({account.account_id})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          <Button 
+            variant="outline" 
+            onClick={selectedAccount ? loadCampaigns : loadAdAccounts}
+            disabled={loadingCampaigns}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${loadingCampaigns ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          <Button>Create Campaign</Button>
+          <Button disabled={!selectedAccount}>Create Campaign</Button>
         </div>
       </div>
 
-      {campaigns.length === 0 ? (
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {adAccounts.length === 0 ? (
+        <Card>
+          <CardContent className="text-center py-10">
+            <h3 className="text-lg font-semibold mb-2">No ad accounts found</h3>
+            <p className="text-muted-foreground mb-4">
+              Your Meta account doesn't have any ad accounts or the connection has expired.
+            </p>
+            <Button onClick={() => window.location.href = '/settings'}>
+              Reconnect Meta Account
+            </Button>
+          </CardContent>
+        </Card>
+      ) : !selectedAccount ? (
+        <Card>
+          <CardContent className="text-center py-10">
+            <h3 className="text-lg font-semibold mb-2">Select an ad account</h3>
+            <p className="text-muted-foreground mb-4">
+              You have {adAccounts.length} ad accounts. Please select one from the dropdown above.
+            </p>
+          </CardContent>
+        </Card>
+      ) : loadingCampaigns ? (
+        <div className="flex items-center justify-center h-96">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+            <p>Loading campaigns...</p>
+          </div>
+        </div>
+      ) : campaigns.length === 0 ? (
         <Card>
           <CardContent className="text-center py-10">
             <h3 className="text-lg font-semibold mb-2">No campaigns found</h3>
