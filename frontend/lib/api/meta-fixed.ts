@@ -151,4 +151,54 @@ export class MetaAPIFixed {
       roas: metric.roas
     }))
   }
+
+  // Get real-time dashboard metrics with caching
+  async getDashboardMetrics(accountId?: string, forceRefresh = false): Promise<any> {
+    try {
+      const { data: { session } } = await this.supabase.auth.getSession()
+      if (!session) {
+        throw new Error('Not authenticated')
+      }
+
+      const params = new URLSearchParams()
+      if (accountId) params.append('account_id', accountId)
+      if (forceRefresh) params.append('force_refresh', 'true')
+
+      const { data, error } = await this.supabase.functions.invoke('get-dashboard-metrics', {
+        body: { account_id: accountId, force_refresh: forceRefresh }
+      })
+
+      if (error) {
+        console.error('Error fetching dashboard metrics:', error)
+        throw error
+      }
+
+      return data?.metrics || {}
+    } catch (error) {
+      console.error('Error fetching dashboard metrics:', error)
+      throw error
+    }
+  }
+
+  // Sync campaign insights from Meta API
+  async syncCampaignInsights(accountId: string, datePreset = 'last_30d'): Promise<any> {
+    try {
+      const { data, error } = await this.supabase.functions.invoke('sync-campaign-insights', {
+        body: {
+          account_id: accountId,
+          date_preset: datePreset
+        }
+      })
+
+      if (error) {
+        console.error('Error syncing campaign insights:', error)
+        throw error
+      }
+
+      return data
+    } catch (error) {
+      console.error('Error syncing campaign insights:', error)
+      throw error
+    }
+  }
 }
