@@ -9,7 +9,7 @@ from pydantic import BaseModel, EmailStr
 import os
 from dotenv import load_dotenv
 
-from models import get_db, User
+from ..models import get_db, User
 
 load_dotenv()
 

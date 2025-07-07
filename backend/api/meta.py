@@ -4,8 +4,8 @@ from typing import List, Optional
 from datetime import datetime, timedelta
 from pydantic import BaseModel
 
-from models import get_db, User, MetaAdAccount, Campaign, CampaignMetrics
-from services.meta_api import MetaAPIService
+from ..models import get_db, User, MetaAdAccount, Campaign, CampaignMetrics
+from ..services.meta_api import MetaAPIService
 from .auth import get_current_user
 
 router = APIRouter(prefix="/api/meta", tags=["meta"])
