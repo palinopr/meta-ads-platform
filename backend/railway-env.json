@@ -1,0 +1,9 @@
+{
+  "DATABASE_URL": "postgresql://postgres.igeuyfuxezvvenxjfnnn:Ai7v+%~%vDN.n\"mD@aws-0-us-east-1.pooler.supabase.com:5432/postgres",
+  "META_APP_ID": "1349075236218599",
+  "META_APP_SECRET": "7c301f1ac1404565f26462e3c734194c",
+  "JWT_SECRET": "ihtuAm6HBAOonQeYkO+FvjY8cxCABLSodMMUB8EqryI=",
+  "FRONTEND_URL": "https://frontend-ten-eta-42.vercel.app",
+  "SUPABASE_URL": "https://igeuyfuxezvvenxjfnnn.supabase.co",
+  "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlnZXV5ZnV4ZXp2dmVueGpmbm5uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzg0NjU1MjcsImV4cCI6MjA1NDA0MTUyN30.gVEXqUA5x_pLU0a2kKlTQFPsYsV8s0P8S2BzCRsZgw0"
+}
