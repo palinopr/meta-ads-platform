@@ -78,25 +78,52 @@ export function CampaignsClient() {
       const { data: { user } } = await createClient().auth.getUser()
       if (user) {
         try {
-          // Try to insert/update the account in our database
-          const { error: upsertError } = await createClient()
+          // First, check if the account already exists
+          const { data: existingAccount } = await createClient()
             .from('meta_ad_accounts')
-            .upsert({
-              user_id: user.id,
-              account_id: selectedAccountData.account_id,
-              account_name: selectedAccountData.account_name,
-              currency: selectedAccountData.currency || 'USD',
-              status: selectedAccountData.status || 'ACTIVE',
-              is_active: selectedAccountData.is_active !== false,
-              updated_at: new Date().toISOString()
-            }, {
-              onConflict: 'account_id,user_id'
-            })
-          
-          if (upsertError) {
-            console.error('Error upserting account:', upsertError)
+            .select('id')
+            .eq('account_id', selectedAccountData.account_id)
+            .eq('user_id', user.id)
+            .single()
+
+          if (!existingAccount) {
+            // Insert new account
+            const { error: insertError } = await createClient()
+              .from('meta_ad_accounts')
+              .insert({
+                user_id: user.id,
+                account_id: selectedAccountData.account_id,
+                account_name: selectedAccountData.account_name,
+                currency: selectedAccountData.currency || 'USD',
+                status: selectedAccountData.status || 'ACTIVE',
+                is_active: selectedAccountData.is_active !== false,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              })
+            
+            if (insertError) {
+              console.error('Error inserting account:', insertError)
+            } else {
+              console.log('Account inserted successfully')
+            }
           } else {
-            console.log('Account ensured in database')
+            // Update existing account
+            const { error: updateError } = await createClient()
+              .from('meta_ad_accounts')
+              .update({
+                account_name: selectedAccountData.account_name,
+                currency: selectedAccountData.currency || 'USD',
+                status: selectedAccountData.status || 'ACTIVE',
+                is_active: selectedAccountData.is_active !== false,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', existingAccount.id)
+            
+            if (updateError) {
+              console.error('Error updating account:', updateError)
+            } else {
+              console.log('Account updated successfully')
+            }
           }
         } catch (e) {
           console.error('Failed to ensure account:', e)
