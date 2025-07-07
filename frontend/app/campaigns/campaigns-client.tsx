@@ -7,6 +7,7 @@ import { MetaAPI, Campaign, MetaAdAccount } from '@/lib/api/meta'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { AccountSelector } from '@/components/ui/account-selector'
 import { createClient } from '@/lib/supabase/client'
+import { ensureAccountExists } from '@/lib/supabase/accounts'
 import { 
   RefreshCw, 
   Pause, 
@@ -75,59 +76,11 @@ export function CampaignsClient() {
       console.log('Selected account:', selectedAccountData)
       
       // Ensure the account exists in our database
-      const { data: { user } } = await createClient().auth.getUser()
-      if (user) {
-        try {
-          // First, check if the account already exists
-          const { data: existingAccount } = await createClient()
-            .from('meta_ad_accounts')
-            .select('id')
-            .eq('account_id', selectedAccountData.account_id)
-            .eq('user_id', user.id)
-            .single()
-
-          if (!existingAccount) {
-            // Insert new account
-            const { error: insertError } = await createClient()
-              .from('meta_ad_accounts')
-              .insert({
-                user_id: user.id,
-                account_id: selectedAccountData.account_id,
-                account_name: selectedAccountData.account_name,
-                currency: selectedAccountData.currency || 'USD',
-                status: selectedAccountData.status || 'ACTIVE',
-                is_active: selectedAccountData.is_active !== false,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-              })
-            
-            if (insertError) {
-              console.error('Error inserting account:', insertError)
-            } else {
-              console.log('Account inserted successfully')
-            }
-          } else {
-            // Update existing account
-            const { error: updateError } = await createClient()
-              .from('meta_ad_accounts')
-              .update({
-                account_name: selectedAccountData.account_name,
-                currency: selectedAccountData.currency || 'USD',
-                status: selectedAccountData.status || 'ACTIVE',
-                is_active: selectedAccountData.is_active !== false,
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', existingAccount.id)
-            
-            if (updateError) {
-              console.error('Error updating account:', updateError)
-            } else {
-              console.log('Account updated successfully')
-            }
-          }
-        } catch (e) {
-          console.error('Failed to ensure account:', e)
-        }
+      try {
+        await ensureAccountExists(selectedAccountData)
+      } catch (e) {
+        console.error('Failed to ensure account exists:', e)
+        // Continue anyway - we can still try to load campaigns
       }
       
       // Load campaigns (even if account insert failed)

@@ -218,6 +218,22 @@ uvicorn main:app --reload
 # Use Supabase dashboard or run migrations locally
 ```
 
+### ⚠️ IMPORTANT: Manual Database Setup Required
+
+Run this SQL in your Supabase SQL Editor (https://supabase.com/dashboard/project/igeuyfuxezvvenxjfnnn/sql/new):
+
+```sql
+-- Fix the unique constraint on meta_ad_accounts
+ALTER TABLE public.meta_ad_accounts 
+DROP CONSTRAINT IF EXISTS meta_ad_accounts_account_id_key;
+
+ALTER TABLE public.meta_ad_accounts 
+ADD CONSTRAINT meta_ad_accounts_account_id_user_id_key 
+UNIQUE (account_id, user_id);
+```
+
+This fixes the account insertion error and allows multiple users to have the same ad account.
+
 ### 🐛 Known Issues & TODOs
 - [x] Facebook OAuth token not persisting to profiles.meta_access_token - FIXED
 - [ ] Need to implement actual Meta API data fetching for campaigns
