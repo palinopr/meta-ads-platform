@@ -149,12 +149,8 @@ export function CampaignsClient() {
       
       // First sync campaigns from Meta API
       try {
-        const syncResult = await api.syncAccount(selectedAccount)
-        console.log('Sync result:', syncResult)
-        
-        if (syncResult?.totalFetched > 0) {
-          console.log(`Synced ${syncResult.totalSaved} of ${syncResult.totalFetched} campaigns`)
-        }
+        await api.syncAccount(selectedAccount)
+        console.log('Campaigns synced successfully')
       } catch (syncError: any) {
         console.error('Sync error:', syncError)
         if (syncError?.tokenExpired) {
