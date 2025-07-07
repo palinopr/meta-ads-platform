@@ -3,6 +3,14 @@
 ## Project Overview
 A comprehensive analytics and optimization platform for Meta advertising campaigns with $2M+ in ad spend management. Currently deployed and operational with Supabase authentication and database integration.
 
+### 📍 Current State (Jan 2025)
+- ✅ **Frontend deployed** at https://frontend-ten-eta-42.vercel.app
+- ✅ **User authentication working** - Users can sign up and log in
+- ✅ **Dashboard UI complete** - Shows metrics cards and layout
+- 🟡 **Supabase Edge Functions created** - Need deployment
+- 🟡 **Facebook OAuth pending** - Need to configure in Supabase
+- 🟡 **Real data integration pending** - After Edge Functions deployment
+
 ### 🎯 Core Features
 - **Real-time Analytics Dashboard** - Track ROAS, CTR, CPC, CPM, conversions across all campaigns
 - **Campaign Optimization** - AI-powered suggestions for budget allocation and audience targeting
@@ -81,9 +89,10 @@ meta-ads-platform/
 
 ### 🚀 Current Deployment Status
 - **Frontend**: ✅ Live at https://frontend-ten-eta-42.vercel.app
-- **Database**: ✅ Supabase configured and ready
-- **Authentication**: ✅ Email/password and Facebook OAuth implemented
-- **Backend API**: 🟡 Ready for deployment (awaiting cloud setup)
+- **Database**: ✅ Supabase configured with auth and profiles
+- **Authentication**: ✅ Email/password working, Facebook OAuth pending setup
+- **Backend**: ✅ Using Supabase Edge Functions (no separate backend needed!)
+- **Edge Functions**: 🟡 Ready to deploy (meta-accounts, meta-sync)
 - **GitHub Repository**: ✅ https://github.com/palinopr/meta-ads-platform
 
 ### 🔄 Development Guidelines
@@ -166,12 +175,14 @@ GET    /auth/callback        - Supabase OAuth callback
 ```
 
 ### 🚦 Next Development Steps
-1. **Backend Deployment**: Deploy FastAPI to Railway/Render
-2. **Facebook OAuth Setup**: Configure in Supabase dashboard
-3. **Data Sync Workers**: Implement Celery tasks for periodic sync
-4. **Real-time Updates**: Add WebSocket support for live metrics
-5. **Advanced Analytics**: Machine learning for optimization suggestions
-6. **White-label Support**: Multi-tenant architecture improvements
+1. **Deploy Edge Functions**: Run `supabase functions deploy` for meta-accounts and meta-sync
+2. **Facebook OAuth Setup**: Enable Facebook provider in Supabase Auth
+3. **Campaign Management**: Add create/edit/pause campaign features
+4. **Budget Optimization**: Implement automated budget redistribution
+5. **Advanced Analytics**: Add charts, export, and custom date ranges
+6. **Alerts & Notifications**: Budget alerts, performance notifications
+7. **A/B Testing Tools**: Create and analyze split tests
+8. **Reporting Module**: Scheduled reports with PDF export
 
 ### 📈 Performance Targets
 - **Dashboard Load**: < 2 seconds
@@ -209,6 +220,49 @@ uvicorn main:app --reload
 - **Meta API Docs**: https://developers.facebook.com/docs/marketing-apis/
 - **Vercel Dashboard**: https://vercel.com/palinos-projects/frontend
 - **GitHub Issues**: https://github.com/palinopr/meta-ads-platform/issues
+
+### 🛠️ How to Build New Features
+
+#### 1. Adding a New Page/Route
+```bash
+# Create new page in frontend/app/[route-name]/page.tsx
+# Example: Campaign editor at /campaigns/edit
+```
+
+#### 2. Adding New Supabase Edge Function
+```typescript
+// Create in supabase/functions/[function-name]/index.ts
+// Deploy with: supabase functions deploy [function-name]
+```
+
+#### 3. Adding Database Tables
+```sql
+-- Add migration in supabase/migrations/
+-- Run in Supabase SQL editor
+-- Always add RLS policies!
+```
+
+#### 4. Common Development Flow
+1. **Update Database Schema** - Add tables/columns in Supabase
+2. **Create Edge Function** - If new API endpoint needed
+3. **Add Frontend Component** - In components/ directory
+4. **Create Page** - In app/ directory
+5. **Update Types** - Keep TypeScript interfaces in sync
+6. **Test Locally** - npm run dev
+7. **Deploy** - git push → Vercel auto-deploys
+
+#### 5. Using AI Features
+- **Campaign Optimization**: Use OpenAI API via Edge Functions
+- **Budget Recommendations**: Analyze metrics patterns
+- **Audience Insights**: Process demographic data
+- **Content Suggestions**: Generate ad copy variations
+
+#### 6. Key Files to Know
+- `frontend/lib/api/meta.ts` - Meta API client
+- `frontend/lib/supabase/client.ts` - Supabase client setup
+- `frontend/app/dashboard/` - Main dashboard components
+- `supabase/functions/` - Edge Functions
+- `supabase/migrations/` - Database schema
 
 ### 🎓 Lessons Learned & Important Notes
 
