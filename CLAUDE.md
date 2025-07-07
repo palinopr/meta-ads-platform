@@ -209,3 +209,76 @@ uvicorn main:app --reload
 - **Meta API Docs**: https://developers.facebook.com/docs/marketing-apis/
 - **Vercel Dashboard**: https://vercel.com/palinos-projects/frontend
 - **GitHub Issues**: https://github.com/palinopr/meta-ads-platform/issues
+
+### 🎓 Lessons Learned & Important Notes
+
+#### Vercel Deployment
+1. **Environment Variables Must Be Set Before Build**
+   - Next.js needs `NEXT_PUBLIC_*` variables during build time
+   - Use `.env.production` file for production environment variables
+   - Or use `--build-env` flags with `vercel` CLI
+   - Without env vars, pages using external services (Supabase) will fail to build
+
+2. **Directory Structure Matters**
+   - Ensure you're deploying from the correct directory
+   - Avoid nested duplicate folders (e.g., `frontend/frontend`)
+   - Use `vercel.json` to configure root directory if needed
+
+3. **Build Errors Are Different from Runtime Errors**
+   - 404 errors can occur when build fails and only generates error pages
+   - Check build logs with `npx vercel inspect --logs <deployment-url>`
+   - Static generation errors prevent pages from being created
+
+#### Supabase Integration
+1. **Client Creation Requirements**
+   - Both URL and anon key are required
+   - Missing either will cause: `@supabase/ssr: Your project's URL and API key are required`
+   - Use separate clients for server (`@/lib/supabase/server`) and browser (`@/lib/supabase/client`)
+
+2. **Authentication Flow**
+   - Middleware handles session refresh automatically
+   - Protected routes redirect to login when no session
+   - OAuth callbacks need proper redirect URL configuration
+
+3. **Row Level Security (RLS)**
+   - Always enable RLS on all tables
+   - Create policies before inserting data
+   - Use `auth.uid()` for user-based access control
+   - Test policies in Supabase dashboard SQL editor
+
+#### Project Organization
+1. **Monorepo Considerations**
+   - Keep frontend and backend in same repository for easier development
+   - Use separate deployment pipelines for each service
+   - Share types/interfaces between frontend and backend
+
+2. **Environment Management**
+   - Use `.env.local` for local development
+   - Use `.env.production` for production builds
+   - Never commit `.env` files with secrets
+   - Document all required environment variables
+
+#### GitHub Integration
+1. **Authentication Methods**
+   - GitHub CLI (`gh`) requires authentication via `gh auth login`
+   - Personal Access Tokens can be used with `GH_TOKEN` environment variable
+   - Vercel can auto-deploy from GitHub with proper permissions
+
+2. **Deployment Workflow**
+   - Commit and push changes to GitHub
+   - Vercel auto-deploys on push (if connected)
+   - Or manually deploy with `npx vercel --prod`
+
+#### Common Pitfalls to Avoid
+1. **Don't assume environment variables are available** - Always check and provide fallbacks
+2. **Don't ignore build warnings** - They often indicate future problems
+3. **Don't skip error boundaries** - Especially important for client-side data fetching
+4. **Don't forget to update TypeScript types** - When changing database schema
+5. **Don't hardcode URLs** - Use environment variables for all external services
+
+#### Best Practices Discovered
+1. **Always run builds locally first** - `npm run build` catches most issues
+2. **Use TypeScript strictly** - Catches many runtime errors at compile time
+3. **Implement proper loading states** - Better UX during data fetching
+4. **Add comprehensive logging** - Helps debug production issues
+5. **Test auth flows thoroughly** - Including edge cases like expired tokens
