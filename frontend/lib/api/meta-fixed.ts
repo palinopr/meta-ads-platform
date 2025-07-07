@@ -92,7 +92,7 @@ export class MetaAPIFixed {
       }
 
       // Find the account we want
-      const account = accounts?.find(a => a.account_id === accountId)
+      const account = accounts?.find((a: any) => a.account_id === accountId)
       if (!account) {
         console.log('Account not found')
         return []
