@@ -1,4 +1,4 @@
-import { createBrowserClient } from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase/client'
 
 export interface MetaAdAccount {
   id: string
@@ -34,7 +34,7 @@ export interface CampaignMetrics {
 }
 
 export class MetaAPI {
-  private supabase = createBrowserClient()
+  private supabase = createClient()
 
   async getAdAccounts(): Promise<MetaAdAccount[]> {
     const { data, error } = await this.supabase.functions.invoke('meta-accounts')
