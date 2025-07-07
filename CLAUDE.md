@@ -1,7 +1,7 @@
 # Meta Ads Analytics Platform
 
 ## Project Overview
-A comprehensive analytics and optimization platform for Meta advertising campaigns with $2M+ in ad spend management.
+A comprehensive analytics and optimization platform for Meta advertising campaigns with $2M+ in ad spend management. Currently deployed and operational with Supabase authentication and database integration.
 
 ### 🎯 Core Features
 - **Real-time Analytics Dashboard** - Track ROAS, CTR, CPC, CPM, conversions across all campaigns
@@ -10,16 +10,36 @@ A comprehensive analytics and optimization platform for Meta advertising campaig
 - **Automated Reporting** - Scheduled reports with custom metrics and insights
 - **Budget Management** - Track spend, set alerts, and automate budget adjustments
 - **A/B Testing Analysis** - Compare campaign performance with statistical significance
+- **Facebook OAuth Integration** - Direct login with Facebook for seamless Meta API access
 
 ### 🔧 Tech Stack
 - **Frontend**: Next.js 14 with TypeScript, Tailwind CSS, Shadcn/ui
 - **Backend**: Python FastAPI with async support
-- **Database**: PostgreSQL with TimescaleDB for time-series data
+- **Database**: Supabase (PostgreSQL) with Row Level Security
+- **Authentication**: Supabase Auth with email/password and Facebook OAuth
 - **Cache**: Redis for real-time data
 - **Queue**: Celery with Redis for background tasks
 - **Meta API**: Facebook Marketing API v19.0
-- **Authentication**: OAuth2 with JWT tokens
-- **Deployment**: Docker + Kubernetes
+- **Deployment**: 
+  - Frontend: Vercel (https://frontend-ten-eta-42.vercel.app)
+  - Backend: Ready for Railway/Render deployment
+  - Database: Supabase Cloud
+
+### 🔑 Environment Variables & Credentials
+```bash
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=https://igeuyfuxezvvenxjfnnn.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+DATABASE_URL=postgresql://postgres.igeuyfuxezvvenxjfnnn:***@aws-0-us-east-1.pooler.supabase.com:5432/postgres
+
+# Facebook/Meta
+FACEBOOK_APP_ID=1349075236218599
+FACEBOOK_APP_SECRET=7c301f1ac1404565f26462e3c734194c
+NEXT_PUBLIC_FACEBOOK_APP_ID=1349075236218599
+
+# Authentication
+NEXTAUTH_SECRET=ihtuAm6HBAOonQeYkO+FvjY8cxCABLSodMMUB8EqryI=
+```
 
 ### 📊 Key Metrics Tracked
 - Return on Ad Spend (ROAS)
@@ -30,68 +50,162 @@ A comprehensive analytics and optimization platform for Meta advertising campaig
 - Frequency
 - Relevance Score
 - Budget Utilization
+- Video Metrics (views, view rate, cost per thruplay)
 
 ### 🏗️ Project Structure
 ```
 meta-ads-platform/
-├── frontend/               # Next.js application
+├── frontend/               # Next.js application (deployed to Vercel)
 │   ├── app/               # App router pages
+│   │   ├── dashboard/     # Protected dashboard routes
+│   │   ├── login/         # Authentication pages
+│   │   └── signup/        # User registration
 │   ├── components/        # React components
+│   │   ├── ui/           # Reusable UI components
+│   │   └── dashboard/    # Dashboard-specific components
 │   ├── lib/              # Utilities and API clients
-│   └── styles/           # Global styles
+│   │   └── supabase/     # Supabase client configuration
+│   └── middleware.ts     # Auth middleware
 ├── backend/               # FastAPI application
 │   ├── api/              # API endpoints
-│   ├── core/             # Core business logic
-│   ├── models/           # Database models
+│   │   ├── auth.py       # JWT authentication
+│   │   └── meta.py       # Meta API endpoints
+│   ├── models/           # SQLAlchemy models
 │   ├── services/         # External service integrations
-│   └── workers/          # Background tasks
-├── infrastructure/        # Docker, K8s configs
+│   │   └── meta_api.py   # Facebook Marketing API service
+│   └── main.py           # FastAPI app entry
+├── supabase/             # Database migrations
+│   └── migrations/       # SQL migration files
 └── docs/                 # Documentation
 ```
 
+### 🚀 Current Deployment Status
+- **Frontend**: ✅ Live at https://frontend-ten-eta-42.vercel.app
+- **Database**: ✅ Supabase configured and ready
+- **Authentication**: ✅ Email/password and Facebook OAuth implemented
+- **Backend API**: 🟡 Ready for deployment (awaiting cloud setup)
+- **GitHub Repository**: ✅ https://github.com/palinopr/meta-ads-platform
+
 ### 🔄 Development Guidelines
 - **Always check `TASK.md`** for current development tasks
+- **Use Supabase client libraries** for database operations
 - **Follow Meta API best practices** - Rate limiting, batch requests, webhook handling
 - **Implement comprehensive error handling** for API failures
 - **Use environment variables** for all sensitive data
 - **Cache aggressively** - Meta data updates every 15 minutes
 - **Write tests** for all API integrations and business logic
 
-### 🧱 Code Standards
-- **Never create files longer than 500 lines** - Split into modules
-- **Use clear module organization** by feature/responsibility
-- **Follow PEP8** with type hints and black formatting
-- **Use pydantic** for data validation
-- **Write docstrings** for all functions (Google style)
+### 🗄️ Database Schema (Supabase)
+- **profiles**: User profiles linked to auth.users
+- **meta_ad_accounts**: Facebook ad accounts
+- **campaigns**: Campaign data with objectives and budgets
+- **ad_sets**: Ad set configurations and targeting
+- **ads**: Individual ad creatives
+- **creatives**: Ad creative content (images, videos, text)
+- **campaign_metrics**: Time-series performance data
+- **adset_metrics**: Ad set level metrics
+
+All tables have:
+- UUID primary keys
+- Row Level Security (RLS) policies
+- Automatic updated_at timestamps
+- User-based access control
+
+### 🔐 Security Implementation
+- **Supabase RLS**: Database-level security policies
+- **OAuth Scopes**: ads_management, ads_read, email
+- **JWT Tokens**: Secure API authentication
+- **Environment Variables**: All secrets in .env files
+- **HTTPS Only**: Enforced on all deployments
+- **Input Validation**: Pydantic models for all API inputs
+
+### 📈 API Endpoints
+```
+# Authentication
+POST   /api/auth/register     - User registration
+POST   /api/auth/token       - Login (JWT)
+GET    /api/auth/me          - Current user info
+
+# Meta Integration
+GET    /api/meta/accounts    - List ad accounts
+GET    /api/meta/accounts/{id}/campaigns - List campaigns
+GET    /api/meta/campaigns/{id}/metrics  - Get metrics
+POST   /api/meta/sync        - Sync data from Meta
+
+# OAuth Callbacks
+GET    /auth/callback        - Supabase OAuth callback
+```
 
 ### 🧪 Testing Requirements
-- **Create pytest unit tests** for all new features
-- **Test structure** mirrors app structure in `/tests`
-- **Include**: expected use, edge cases, failure cases
-- **Run tests in Docker** for consistency
+- **Frontend Tests**: Jest + React Testing Library
+- **Backend Tests**: Pytest with FastAPI test client
+- **E2E Tests**: Playwright for critical user flows
+- **Test Coverage**: Minimum 80% for business logic
 
-### 📚 Documentation
-- **Update README.md** when features/dependencies change
-- **Comment non-obvious code** with `# Reason:` explanations
-- **Keep API documentation** up to date
+### 📚 Key Dependencies
+```json
+// Frontend
+{
+  "@supabase/supabase-js": "^2.50.3",
+  "@supabase/ssr": "^0.6.1",
+  "next": "14.2.5",
+  "react": "^18",
+  "tailwindcss": "^3.4.1",
+  "lucide-react": "^0.321.0",
+  "recharts": "^2.10.4"
+}
 
-### 🚀 Performance Considerations
-- **Batch Meta API requests** to avoid rate limits
-- **Use Redis caching** for frequently accessed data
-- **Implement pagination** for large data sets
-- **Use background tasks** for heavy processing
-- **Monitor API usage** to stay within limits
+// Backend
+{
+  "fastapi": "0.109.0",
+  "facebook-business": "18.0.4",
+  "sqlalchemy": "2.0.25",
+  "pydantic": "2.5.3",
+  "celery": "5.3.6"
+}
+```
 
-### 🔐 Security Requirements
-- **Never commit secrets** - Use environment variables
-- **Implement proper authentication** - OAuth2 + JWT
-- **Validate all inputs** - Prevent injection attacks
-- **Use HTTPS everywhere** - Encrypt data in transit
-- **Implement rate limiting** - Prevent abuse
+### 🚦 Next Development Steps
+1. **Backend Deployment**: Deploy FastAPI to Railway/Render
+2. **Facebook OAuth Setup**: Configure in Supabase dashboard
+3. **Data Sync Workers**: Implement Celery tasks for periodic sync
+4. **Real-time Updates**: Add WebSocket support for live metrics
+5. **Advanced Analytics**: Machine learning for optimization suggestions
+6. **White-label Support**: Multi-tenant architecture improvements
 
-### 📈 Scaling Considerations
-- **Design for horizontal scaling** from day one
-- **Use message queues** for async processing
-- **Implement proper logging** and monitoring
-- **Plan for multi-tenancy** architecture
-- **Consider data partitioning** for large datasets
+### 📈 Performance Targets
+- **Dashboard Load**: < 2 seconds
+- **API Response**: < 500ms for cached data
+- **Data Freshness**: 15-minute sync intervals
+- **Concurrent Users**: 100+ without degradation
+- **Data Retention**: 2 years of historical metrics
+
+### 🔧 Local Development
+```bash
+# Frontend
+cd frontend
+npm install
+npm run dev
+
+# Backend
+cd backend
+pip install -r requirements.txt
+uvicorn main:app --reload
+
+# Database
+# Use Supabase dashboard or run migrations locally
+```
+
+### 🐛 Known Issues & TODOs
+- [ ] Add comprehensive error boundaries in React
+- [ ] Implement request retry logic for Meta API
+- [ ] Add data export functionality
+- [ ] Create onboarding flow for new users
+- [ ] Implement webhook handlers for real-time updates
+- [ ] Add multi-language support
+
+### 📞 Support & Resources
+- **Supabase Dashboard**: https://app.supabase.com/project/igeuyfuxezvvenxjfnnn
+- **Meta API Docs**: https://developers.facebook.com/docs/marketing-apis/
+- **Vercel Dashboard**: https://vercel.com/palinos-projects/frontend
+- **GitHub Issues**: https://github.com/palinopr/meta-ads-platform/issues
