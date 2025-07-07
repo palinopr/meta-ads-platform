@@ -19,8 +19,8 @@ export interface Campaign {
   name: string
   status: string
   objective: string
-  daily_budget?: number
-  lifetime_budget?: number
+  daily_budget: number | null
+  lifetime_budget: number | null
   created_time: string
   updated_time?: string
 }
