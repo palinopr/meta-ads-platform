@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { createClient } from '@/lib/supabase/client'
 import { Facebook, CheckCircle, AlertCircle, Loader2 } from 'lucide-react'
-import { useRouter } from 'next/navigation'
 
 interface Profile {
   id: string
@@ -26,52 +25,40 @@ interface SettingsClientProps {
 export function SettingsClient({ user, profile }: SettingsClientProps) {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
-  const [currentProfile, setCurrentProfile] = useState(profile)
+  const [checkingConnection, setCheckingConnection] = useState(false)
   const supabase = createClient()
-  const router = useRouter()
 
-  // Check for Facebook identity in user object
+  // Check if we just came back from OAuth
   useEffect(() => {
-    const checkFacebookConnection = async () => {
-      try {
-        // Get the current session
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    const checkOAuthCallback = async () => {
+      const params = new URLSearchParams(window.location.search)
+      if (params.get('code') || params.get('provider_token')) {
+        setCheckingConnection(true)
         
-        if (sessionError || !session) return
-
-        // Check if user has Facebook identity
-        const facebookIdentity = session.user.identities?.find(
-          identity => identity.provider === 'facebook'
-        )
-
-        if (facebookIdentity && !currentProfile?.meta_access_token) {
-          // User has Facebook identity but profile hasn't been updated
-          setMessage({ type: 'success', text: 'Updating Meta connection...' })
-          
-          // Update profile with Facebook data
-          const { data, error } = await supabase
-            .from('profiles')
-            .update({
-              meta_user_id: facebookIdentity.id,
-              meta_access_token: 'connected', // We'll use a flag for now
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', user.id)
-            .select()
-            .single()
-
-          if (!error && data) {
-            setCurrentProfile(data)
+        // Wait a moment for Supabase to process the OAuth
+        setTimeout(async () => {
+          try {
+            // Call our edge function to save the Meta token
+            const { data, error } = await supabase.functions.invoke('handle-meta-oauth')
+            
+            if (error) throw error
+            
             setMessage({ type: 'success', text: 'Meta account connected successfully!' })
+            
+            // Refresh the page to update the UI
+            setTimeout(() => window.location.href = '/settings', 1500)
+          } catch (error: any) {
+            console.error('OAuth callback error:', error)
+            setMessage({ type: 'error', text: 'Failed to save Meta connection. Please try again.' })
+          } finally {
+            setCheckingConnection(false)
           }
-        }
-      } catch (error) {
-        console.error('Error checking Facebook connection:', error)
+        }, 2000)
       }
     }
-
-    checkFacebookConnection()
-  }, [user.id, currentProfile?.meta_access_token])
+    
+    checkOAuthCallback()
+  }, [])
 
   const handleConnectMeta = async () => {
     setLoading(true)
@@ -89,6 +76,7 @@ export function SettingsClient({ user, profile }: SettingsClientProps) {
       if (error) throw error
     } catch (error: any) {
       setMessage({ type: 'error', text: error.message })
+    } finally {
       setLoading(false)
     }
   }
@@ -99,21 +87,20 @@ export function SettingsClient({ user, profile }: SettingsClientProps) {
 
     try {
       // Update profile to remove Meta tokens
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('profiles')
         .update({ 
           meta_access_token: null,
-          meta_user_id: null,
-          updated_at: new Date().toISOString()
+          meta_user_id: null 
         })
         .eq('id', user.id)
-        .select()
-        .single()
 
       if (error) throw error
 
-      setCurrentProfile(data)
       setMessage({ type: 'success', text: 'Meta account disconnected successfully' })
+      
+      // Refresh the page to update the UI
+      setTimeout(() => window.location.reload(), 1500)
     } catch (error: any) {
       setMessage({ type: 'error', text: error.message })
     } finally {
@@ -121,7 +108,18 @@ export function SettingsClient({ user, profile }: SettingsClientProps) {
     }
   }
 
-  const isMetaConnected = currentProfile?.meta_access_token !== null
+  const isMetaConnected = profile?.meta_access_token !== null
+
+  if (checkingConnection) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p>Connecting your Meta account...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex-1 space-y-4 p-8 pt-6">
@@ -147,16 +145,16 @@ export function SettingsClient({ user, profile }: SettingsClientProps) {
             <label className="text-sm font-medium text-gray-700">Email</label>
             <p className="mt-1 text-sm text-gray-900">{user.email}</p>
           </div>
-          {currentProfile?.full_name && (
+          {profile?.full_name && (
             <div>
               <label className="text-sm font-medium text-gray-700">Full Name</label>
-              <p className="mt-1 text-sm text-gray-900">{currentProfile.full_name}</p>
+              <p className="mt-1 text-sm text-gray-900">{profile.full_name}</p>
             </div>
           )}
-          {currentProfile?.company_name && (
+          {profile?.company_name && (
             <div>
               <label className="text-sm font-medium text-gray-700">Company</label>
-              <p className="mt-1 text-sm text-gray-900">{currentProfile.company_name}</p>
+              <p className="mt-1 text-sm text-gray-900">{profile.company_name}</p>
             </div>
           )}
         </CardContent>
@@ -178,28 +176,20 @@ export function SettingsClient({ user, profile }: SettingsClientProps) {
                 <span className="font-medium">Meta account connected</span>
               </div>
               <p className="text-sm text-gray-600">
-                Your Meta advertising data is ready to be synced.
+                Your Meta advertising data is being synced automatically.
               </p>
-              <div className="flex space-x-2">
-                <Button 
-                  onClick={() => router.push('/campaigns')}
-                  variant="default"
-                >
-                  View Campaigns
-                </Button>
-                <Button 
-                  onClick={handleDisconnectMeta}
-                  variant="outline"
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Facebook className="h-4 w-4 mr-2" />
-                  )}
-                  Disconnect Meta Account
-                </Button>
-              </div>
+              <Button 
+                onClick={handleDisconnectMeta}
+                variant="outline"
+                disabled={loading}
+              >
+                {loading ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Facebook className="h-4 w-4 mr-2" />
+                )}
+                Disconnect Meta Account
+              </Button>
             </div>
           ) : (
             <div className="space-y-4">
