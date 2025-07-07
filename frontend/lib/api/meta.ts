@@ -60,9 +60,12 @@ export class MetaAPI {
   }
 
   async syncAccount(accountId: string): Promise<void> {
-    const { data, error } = await this.supabase.functions.invoke('sync-campaigns', {
+    // Use v2 for debugging
+    const { data, error } = await this.supabase.functions.invoke('sync-campaigns-v2', {
       body: { account_id: accountId }
     })
+
+    console.log('Sync response:', { data, error })
 
     if (error) {
       console.error('Error syncing account:', error)
@@ -70,6 +73,7 @@ export class MetaAPI {
     }
 
     if (data?.error) {
+      console.error('Sync returned error:', data)
       if (data.tokenExpired) {
         throw new Error('Meta token expired. Please reconnect your account.')
       }

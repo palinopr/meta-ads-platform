@@ -64,12 +64,23 @@ export function CampaignsClient() {
       setLoadingCampaigns(true)
       setError(null)
       
+      console.log('Syncing campaigns for account:', selectedAccount)
+      
       // First sync campaigns from Meta API
-      await api.syncAccount(selectedAccount)
+      try {
+        await api.syncAccount(selectedAccount)
+      } catch (syncError: any) {
+        console.error('Sync error:', syncError)
+        // Continue to load existing campaigns even if sync fails
+      }
       
       // Then load the campaigns
       const data = await api.getCampaigns(selectedAccount)
       setCampaigns(data)
+      
+      if (data.length === 0) {
+        setError('No campaigns found. This account might not have any campaigns or sync might have failed.')
+      }
     } catch (error: any) {
       console.error('Failed to sync/load campaigns:', error)
       setError(error.message || 'Failed to load campaigns')

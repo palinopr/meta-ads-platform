@@ -6,13 +6,42 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Validate environment variables
+const supabaseUrl = Deno.env.get('SUPABASE_URL')
+const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')
+const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+
+if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceRoleKey) {
+  console.error('Missing required environment variables')
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    const { account_id } = await req.json()
+    // Check for authorization header
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Missing authorization header' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Parse request body
+    let body
+    try {
+      body = await req.json()
+    } catch (e) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid request body' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const { account_id } = body
     
     if (!account_id) {
       return new Response(
@@ -23,17 +52,31 @@ serve(async (req) => {
 
     console.log('Syncing campaigns for account:', account_id)
 
-    // Create Supabase client
+    // Check if environment variables are available
+    if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceRoleKey) {
+      return new Response(
+        JSON.stringify({ error: 'Server configuration error: Missing environment variables' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Create Supabase client for auth
     const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      supabaseUrl,
+      supabaseAnonKey,
       { 
         global: { 
           headers: { 
-            Authorization: req.headers.get('Authorization')! 
+            Authorization: authHeader 
           } 
         } 
       }
+    )
+
+    // Create admin client for database operations
+    const supabaseAdmin = createClient(
+      supabaseUrl,
+      supabaseServiceRoleKey
     )
 
     // Get user from JWT
@@ -46,22 +89,23 @@ serve(async (req) => {
       )
     }
 
-    // Get user's Meta access token
-    const { data: profile, error: profileError } = await supabaseClient
+    // Get user's Meta access token using admin client
+    const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
       .select('meta_access_token')
       .eq('id', user.id)
       .single()
 
     if (profileError || !profile?.meta_access_token) {
+      console.error('Profile error:', profileError)
       return new Response(
         JSON.stringify({ error: 'No Meta access token found' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    // Get the ad account record
-    const { data: adAccount, error: adAccountError } = await supabaseClient
+    // Get the ad account record using admin client
+    const { data: adAccount, error: adAccountError } = await supabaseAdmin
       .from('meta_ad_accounts')
       .select('id')
       .eq('account_id', account_id)
@@ -69,6 +113,7 @@ serve(async (req) => {
       .single()
 
     if (adAccountError || !adAccount) {
+      console.error('Ad account error:', adAccountError)
       return new Response(
         JSON.stringify({ error: 'Ad account not found' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -129,7 +174,7 @@ serve(async (req) => {
       
       for (let i = 0; i < campaignsToUpsert.length; i += batchSize) {
         const batch = campaignsToUpsert.slice(i, i + batchSize)
-        const { data: batchData, error: batchError } = await supabaseClient
+        const { data: batchData, error: batchError } = await supabaseAdmin
           .from('campaigns')
           .upsert(batch, { 
             onConflict: 'campaign_id',
