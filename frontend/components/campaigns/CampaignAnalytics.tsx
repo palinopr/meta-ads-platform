@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { MetaAPI, Campaign, CampaignMetrics } from "@/lib/api/meta"
+import { createClient } from "@/lib/supabase/client"
 import { CampaignFilters, CampaignFilterOptions } from "./CampaignFilters"
 import { CampaignComparison } from "./CampaignComparison"
 import { PerformanceChart } from "@/components/dashboard/PerformanceChart"
@@ -28,7 +29,8 @@ export function CampaignAnalytics({ accountId }: CampaignAnalyticsProps) {
   const [refreshing, setRefreshing] = useState(false)
   const [activeTab, setActiveTab] = useState("overview")
 
-  const metaApi = new MetaAPI()
+  const supabase = createClient()
+  const metaApi = new MetaAPI(supabase)
 
   // Load campaigns
   const loadCampaigns = async () => {
