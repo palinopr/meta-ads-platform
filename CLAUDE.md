@@ -282,7 +282,47 @@ This fixes the account insertion error and allows multiple users to have the sam
 4. **Create Page** - In app/ directory
 5. **Update Types** - Keep TypeScript interfaces in sync
 6. **Test Locally** - npm run dev
-7. **Deploy** - git push → Vercel auto-deploys
+7. **Deploy** - Follow Standard Deployment Workflow (see below)
+
+#### 5. 🚀 **CRITICAL: Standard Deployment Workflow**
+
+**ALWAYS execute these 2 steps when completing ANY CEO feature:**
+
+```bash
+# Step 1: Git Commit & Push
+git add [changed-files]
+git commit -m "🚀 [Feature Name]: [Brief description]
+
+✅ [Task completion details]
+- [Feature 1]: [Description]
+- [Feature 2]: [Description]
+
+Business Impact:
+💰 [Revenue impact]
+🏢 [Customer value]
+📈 [Growth metric]
+
+Technical:
+- [Technical detail 1]
+- [Technical detail 2]"
+
+git push origin main
+
+# Step 2: Force Vercel Production Deployment
+cd frontend && npx vercel --prod
+```
+
+**Why This Matters:**
+- ✅ Ensures all CEO features are immediately live in production
+- ✅ GitHub auto-deploy may miss changes or have delays
+- ✅ Manual Vercel deployment guarantees latest code is deployed
+- ✅ Provides immediate production URL for testing
+- ✅ Critical for demo readiness and customer showcases
+
+**Always verify deployment worked by checking:**
+- Bundle size increase (indicates new features deployed)
+- Production URL reflects latest changes
+- No deployment errors in Vercel logs
 
 #### 5. Using AI Features
 - **Campaign Optimization**: Use OpenAI API via Edge Functions
