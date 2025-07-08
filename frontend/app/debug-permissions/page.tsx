@@ -10,19 +10,31 @@ import { CheckCircle2, XCircle, AlertCircle } from 'lucide-react'
 export default function DebugPermissionsPage() {
   const [loading, setLoading] = useState(false)
   const [debugData, setDebugData] = useState<any>(null)
+  const [tokenDebugData, setTokenDebugData] = useState<any>(null)
   const supabase = createClient()
 
   const runDebug = async () => {
     setLoading(true)
     setDebugData(null)
+    setTokenDebugData(null)
     
     try {
-      const { data, error } = await supabase.functions.invoke('debug-meta-permissions')
+      // Run both debug functions in parallel
+      const [permissionsResult, tokenResult] = await Promise.all([
+        supabase.functions.invoke('debug-meta-permissions'),
+        supabase.functions.invoke('debug-raw-token')
+      ])
       
-      if (error) {
-        setDebugData({ error: error.message })
+      if (permissionsResult.error) {
+        setDebugData({ error: permissionsResult.error.message })
       } else {
-        setDebugData(data)
+        setDebugData(permissionsResult.data)
+      }
+      
+      if (tokenResult.error) {
+        setTokenDebugData({ error: tokenResult.error.message })
+      } else {
+        setTokenDebugData(tokenResult.data)
       }
     } catch (error: any) {
       setDebugData({ error: error.message })
@@ -51,6 +63,68 @@ export default function DebugPermissionsPage() {
           {loading ? 'Running Debug...' : 'Run Meta Permissions Check'}
         </Button>
       </div>
+
+      {/* Token Debug Information */}
+      {tokenDebugData && (
+        <Card className="mb-6 border-blue-200">
+          <CardHeader>
+            <CardTitle className="text-blue-600">Token Storage Debug</CardTitle>
+            <CardDescription>Raw token storage information</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {tokenDebugData.tokenInfo && (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <strong>Has Token:</strong> {tokenDebugData.tokenInfo.hasToken ? 'Yes' : 'No'}
+                  </div>
+                  <div>
+                    <strong>Token Length:</strong> {tokenDebugData.tokenInfo.tokenLength}
+                  </div>
+                  <div>
+                    <strong>Looks Encrypted:</strong> {tokenDebugData.tokenInfo.looksEncrypted ? 'Yes' : 'No'}
+                  </div>
+                  <div>
+                    <strong>Encryption Key Present:</strong> {tokenDebugData.tokenInfo.encryptionKeyPresent ? 'Yes' : 'No'}
+                  </div>
+                  {tokenDebugData.tokenInfo.tokenPreview && (
+                    <div className="col-span-2">
+                      <strong>Token Preview:</strong> <code className="bg-gray-100 px-2 py-1 rounded">{tokenDebugData.tokenInfo.tokenPreview}</code>
+                    </div>
+                  )}
+                </div>
+                
+                {tokenDebugData.decryptionAttempt && (
+                  <Alert className={tokenDebugData.decryptionAttempt.success ? '' : 'border-red-200'}>
+                    <AlertTitle>Decryption Attempt</AlertTitle>
+                    <AlertDescription>
+                      {tokenDebugData.decryptionAttempt.success ? (
+                        <span className="text-green-600">✓ Token decrypted successfully</span>
+                      ) : (
+                        <span className="text-red-600">✗ Decryption failed: {tokenDebugData.decryptionAttempt.error}</span>
+                      )}
+                    </AlertDescription>
+                  </Alert>
+                )}
+                
+                {tokenDebugData.recommendations && tokenDebugData.recommendations.length > 0 && (
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Token Recommendations</AlertTitle>
+                    <AlertDescription>
+                      <ul className="list-disc list-inside mt-2">
+                        {tokenDebugData.recommendations.map((rec: string, idx: number) => (
+                          <li key={idx}>{rec}</li>
+                        ))}
+                      </ul>
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {debugData && (
         <div className="space-y-6">

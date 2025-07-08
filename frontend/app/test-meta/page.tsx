@@ -54,7 +54,7 @@ export default function TestMetaPage() {
     setLoading(true)
     setMessage('Syncing token...')
     
-    const { data, error } = await supabase.functions.invoke('sync-meta-token')
+    const { data, error } = await supabase.functions.invoke('sync-meta-token-v2')
     
     if (error) {
       setMessage(`Sync error: ${JSON.stringify(error)}`)
