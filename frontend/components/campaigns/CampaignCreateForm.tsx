@@ -12,6 +12,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Loader2, ArrowLeft, AlertCircle } from 'lucide-react'
 import { MetaAPI } from '@/lib/api/meta'
+import { createClient } from '@/lib/supabase/client'
 
 interface CampaignCreateFormProps {
   accountId: string
@@ -76,7 +77,8 @@ export function CampaignCreateForm({ accountId, onSuccess, onCancel }: CampaignC
     optimization_goal: 'LINK_CLICKS'
   })
 
-  const api = new MetaAPI()
+  const supabase = createClient()
+  const api = new MetaAPI(supabase)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
