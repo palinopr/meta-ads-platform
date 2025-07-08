@@ -57,12 +57,17 @@ export function CampaignAnalytics({ accountId }: CampaignAnalyticsProps) {
       
       for (const campaignId of campaignIds) {
         try {
-          const data = await metaApi.getCampaignMetrics(
+          const response = await metaApi.getCampaignMetrics(
             campaignId,
             filters.startDate,
             filters.endDate
           )
-          metrics[campaignId] = data
+          if (response.error) {
+            console.error(`Error loading metrics for campaign ${campaignId}:`, response.error)
+            metrics[campaignId] = []
+          } else {
+            metrics[campaignId] = response.data
+          }
         } catch (error) {
           console.error(`Error loading metrics for campaign ${campaignId}:`, error)
           metrics[campaignId] = []

@@ -95,4 +95,24 @@ export class MetaAPI {
       return { data: {}, error: error.message };
     }
   }
+
+  async getCampaignMetrics(campaignId: string, startDate?: Date, endDate?: Date): Promise<MetaAPIResponse<CampaignMetrics[]>> {
+    try {
+      const { data, error } = await this.supabaseClient.functions.invoke('get-campaign-metrics', {
+        body: { 
+          campaign_id: campaignId,
+          start_date: startDate?.toISOString(),
+          end_date: endDate?.toISOString()
+        }
+      });
+
+      if (error) {
+        return { data: [], error: error.message };
+      }
+
+      return { data: data?.metrics || [], success: true };
+    } catch (error: any) {
+      return { data: [], error: error.message };
+    }
+  }
 }
