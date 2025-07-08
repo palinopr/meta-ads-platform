@@ -1,5 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { getRateLimiter, rateLimitedFetch } from '../_shared/rate-limiter.ts'
+import { getDecryptedMetaToken } from '../_shared/token-encryption.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -71,22 +73,15 @@ serve(async (req) => {
 
     console.log('User authenticated:', user.id)
 
-    // Get user's Meta access token
-    const { data: profile, error: profileError } = await supabaseClient
-      .from('profiles')
-      .select('meta_access_token')
-      .eq('id', user.id)
-      .single()
+    // Get user's Meta access token using secure decryption
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
 
-    if (profileError) {
-      console.error('Profile error:', profileError)
-      return new Response(
-        JSON.stringify({ error: 'Profile not found', details: profileError }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
+    const accessToken = await getDecryptedMetaToken(supabaseAdmin, user.id)
 
-    if (!profile?.meta_access_token) {
+    if (!accessToken) {
       return new Response(
         JSON.stringify({ error: 'No Meta access token found. Please reconnect your Meta account.' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -123,17 +118,138 @@ serve(async (req) => {
 
     console.log('Ad account found:', adAccount.id)
 
-    // For now, just return success without fetching from Meta API
-    // This helps us debug the database issues first
-    return new Response(
-      JSON.stringify({ 
-        success: true,
-        message: 'Campaign sync endpoint reached successfully',
-        adAccountId: adAccount.id,
-        accountId: account_id
-      }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    // Initialize rate limiter for this account/user
+    const rateLimiter = getRateLimiter(account_id, user.id)
+    
+    // Check rate limit status before making request
+    const rateLimitStatus = rateLimiter.getStatus()
+    console.log('Rate limit status:', rateLimitStatus)
+    
+    if (rateLimitStatus.isBlocked) {
+      console.log(`Rate limited. Blocked for ${rateLimitStatus.blockedUntilMs}ms`)
+      return new Response(
+        JSON.stringify({ 
+          error: `Rate limit exceeded. Please wait ${Math.ceil(rateLimitStatus.blockedUntilMs / 1000)} seconds before retrying.`,
+          campaigns: [],
+          rateLimited: true,
+          waitTimeMs: rateLimitStatus.blockedUntilMs
+        }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    try {
+      console.log('Fetching campaigns from Meta API with rate limiting...')
+      
+      // Fetch campaigns from Meta API with rate limiting
+      const campaignFields = 'id,name,objective,status,daily_budget,lifetime_budget,start_time,stop_time,created_time,updated_time'
+      const metaUrl = `https://graph.facebook.com/v19.0/act_${account_id}/campaigns?fields=${campaignFields}&limit=100&access_token=${accessToken}`
+      
+      const metaResponse = await rateLimitedFetch(metaUrl, {}, rateLimiter, false)
+      const responseText = await metaResponse.text()
+      
+      if (!metaResponse.ok) {
+        console.error('Meta API error:', responseText)
+        
+        let errorData
+        try {
+          errorData = JSON.parse(responseText)
+        } catch {
+          errorData = { error: { message: responseText } }
+        }
+        
+        // Check if token is invalid
+        if (errorData.error?.code === 190 || metaResponse.status === 401) {
+          return new Response(
+            JSON.stringify({ 
+              error: 'Meta access token is invalid or expired. Please reconnect your Meta account.',
+              campaigns: [],
+              tokenExpired: true
+            }),
+            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+        
+        return new Response(
+          JSON.stringify({ 
+            error: errorData.error?.message || 'Failed to fetch campaigns from Meta API',
+            campaigns: [],
+            metaError: true
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      const metaData = JSON.parse(responseText)
+      console.log(`Fetched ${metaData.data?.length || 0} campaigns from Meta API`)
+      
+      // Transform and store campaigns in database
+      const campaigns = (metaData.data || []).map((campaign: any) => ({
+        campaign_id: campaign.id,
+        account_id: account_id,
+        user_id: user.id,
+        name: campaign.name || 'Unnamed Campaign',
+        objective: campaign.objective || 'UNKNOWN',
+        status: campaign.status || 'UNKNOWN',
+        daily_budget: campaign.daily_budget ? parseInt(campaign.daily_budget) : null,
+        lifetime_budget: campaign.lifetime_budget ? parseInt(campaign.lifetime_budget) : null,
+        start_time: campaign.start_time || null,
+        stop_time: campaign.stop_time || null,
+        created_time: campaign.created_time || new Date().toISOString(),
+        updated_time: campaign.updated_time || new Date().toISOString()
+      }))
+
+      // Batch insert/update campaigns in database
+      if (campaigns.length > 0) {
+        console.log(`Inserting ${campaigns.length} campaigns into database...`)
+        
+        const { data: insertedCampaigns, error: insertError } = await supabaseClient
+          .from('campaigns')
+          .upsert(campaigns, { 
+            onConflict: 'campaign_id,user_id',
+            ignoreDuplicates: false 
+          })
+          .select()
+
+        if (insertError) {
+          console.error('Database insert error:', insertError)
+          // Continue anyway, but log the error
+        } else {
+          console.log(`Successfully synced ${insertedCampaigns?.length || campaigns.length} campaigns`)
+        }
+      }
+
+      // Include rate limit info in response
+      const finalRateLimitStatus = rateLimiter.getStatus()
+      
+      return new Response(
+        JSON.stringify({ 
+          success: true,
+          campaigns: campaigns,
+          totalFetched: campaigns.length,
+          accountId: account_id,
+          rateLimitStatus: {
+            utilizationPercent: Math.round(finalRateLimitStatus.utilizationPercent),
+            canMakeMoreRequests: finalRateLimitStatus.canMakeRead,
+            pointsUsed: finalRateLimitStatus.currentPoints,
+            maxPoints: finalRateLimitStatus.maxPoints
+          }
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+      
+    } catch (fetchError: any) {
+      console.error('Campaign fetch error:', fetchError)
+      
+      return new Response(
+        JSON.stringify({ 
+          error: `Failed to fetch campaigns: ${fetchError.message}`,
+          campaigns: [],
+          fetchError: true
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
 
   } catch (error: any) {
     console.error('Unexpected error in sync-campaigns-v2:', error)

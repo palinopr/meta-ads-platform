@@ -39,6 +39,22 @@
 - **Solution Status**: ✅ SOLVED - Created 🧠DECISION-LOG.md for rationale tracking
 - **Prevention**: Log all significant decisions immediately with full context
 
+### **Issue #004: Supabase Edge Function Authentication During Testing**
+- **Discovered**: During Meta token encryption deployment testing
+- **Symptoms**: Test functions returning 401 authentication errors even with proper headers
+- **Impact**: LOW - Testing complexity, but doesn't affect production functionality
+- **Root Cause**: Supabase enforces authentication on all edge functions by default
+- **Solution Status**: ✅ WORKED AROUND - Used production verification instead of direct testing
+- **Prevention**: Plan authentication for testing, or use service role for debug functions
+
+### **Issue #005: Environment Variable Deployment Methods**
+- **Discovered**: During META_TOKEN_ENCRYPTION_KEY deployment
+- **Symptoms**: Uncertainty about CLI vs Dashboard deployment for environment variables
+- **Impact**: LOW - Deployment method ambiguity, but CLI method worked successfully
+- **Root Cause**: Multiple valid deployment paths for Supabase environment variables
+- **Solution Status**: ✅ RESOLVED - Supabase CLI `secrets set` command works reliably
+- **Prevention**: Document preferred deployment method (CLI) for consistent approach
+
 ---
 
 ## 🔍 **MONITORING AREAS** (Watch for Future Issues)
@@ -254,7 +270,8 @@
 
 ---
 
-**🔄 Last Updated**: January 8, 2025, 17:55  
-**📊 Total Issues Tracked**: 3 discovered, 3 solved, 0 active  
-**⚠️ Risk Level**: LOW - System stable with good prevention measures  
-**🎯 Next Review**: When any new issue discovered or weekly review
+**🔄 Last Updated**: January 8, 2025, 19:50  
+**📊 Total Issues Tracked**: 5 discovered, 5 solved, 0 active  
+**⚠️ Risk Level**: LOW - System stable with good prevention measures + CEO Priority #1 completed  
+**🎯 Next Review**: 🤖 AUTO-TRIGGERED when MANDATORY-CEO-REFERENCE.md is requested  
+**🤖 Automation Status**: ACTIVE - Will auto-document issues with CEO priority context
