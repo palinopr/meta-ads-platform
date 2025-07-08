@@ -542,3 +542,25 @@ cd frontend && npx vercel --prod
 
 #### Key Takeaway
 **Always clean up after development!** Debug tools are temporary. Once the feature works, remove the scaffolding. The best code is no code - if you don't need it, delete it.
+
+## 🤖 AUTOMATED CEO PROTOCOL
+
+When user says **"read mandatory CEO reference"**, the automated protocol executes:
+
+1. **Reads all .md files** starting with MANDATORY-CEO-REFERENCE.md
+2. **Creates TODO list** with features and deployment tasks
+3. **Executes highest priority** items from CEO reference
+4. **Always ends with**:
+   - git add -A
+   - git commit with business impact message
+   - git push origin main
+   - cd frontend && npx vercel --prod
+5. **Updates all documentation** after completion
+
+This ensures:
+- CEO priorities are always addressed first
+- Every change is deployed to production
+- Documentation stays current
+- Nothing is forgotten
+
+See **🤖AUTO-PROTOCOL.md** for full implementation details.
