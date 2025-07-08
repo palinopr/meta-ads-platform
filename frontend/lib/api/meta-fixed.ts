@@ -13,17 +13,17 @@ export interface MetaAdAccount {
 }
 
 export interface Campaign {
-  id: string
-  ad_account_id: string
   campaign_id: string
   account_id: string
   name: string
-  status: string
   objective: string
-  daily_budget: number | null
-  lifetime_budget: number | null
+  status: string
+  daily_budget?: number
+  lifetime_budget?: number
+  start_time?: string
+  stop_time?: string
   created_time: string
-  updated_time?: string
+  updated_time: string
 }
 
 export interface CampaignMetrics {
@@ -81,8 +81,17 @@ export class MetaAPIFixed {
 
       if (!rpcError && rpcData) {
         return rpcData.map((campaign: any) => ({
-          ...campaign,
-          account_id: accountId
+          campaign_id: campaign.campaign_id,
+          account_id: accountId,
+          name: campaign.name,
+          objective: campaign.objective,
+          status: campaign.status,
+          daily_budget: campaign.daily_budget || undefined,
+          lifetime_budget: campaign.lifetime_budget || undefined,
+          start_time: campaign.start_time || undefined,
+          stop_time: campaign.stop_time || undefined,
+          created_time: campaign.created_time,
+          updated_time: campaign.updated_time || campaign.created_time
         }))
       }
 
@@ -114,10 +123,19 @@ export class MetaAPIFixed {
         return []
       }
 
-      // Map the data to include account_id field
+      // Map the data to include account_id field and handle type differences
       return (data || []).map(campaign => ({
-        ...campaign,
-        account_id: accountId
+        campaign_id: campaign.campaign_id,
+        account_id: accountId,
+        name: campaign.name,
+        objective: campaign.objective,
+        status: campaign.status,
+        daily_budget: campaign.daily_budget || undefined,
+        lifetime_budget: campaign.lifetime_budget || undefined,
+        start_time: campaign.start_time || undefined,
+        stop_time: campaign.stop_time || undefined,
+        created_time: campaign.created_time,
+        updated_time: campaign.updated_time || campaign.created_time
       }))
     } catch (error) {
       console.error('Unexpected error in getCampaigns:', error)
