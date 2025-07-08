@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { encryptMetaToken } from '../_shared/token-encryption.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -77,11 +78,22 @@ serve(async (req) => {
       }
     }
 
-    // Update the user's profile with the Meta access token
+    // Encrypt the Meta access token before storing
+    const tokenToStore = metaAccessToken || session?.provider_token
+    if (!tokenToStore) {
+      return new Response(
+        JSON.stringify({ error: 'No valid Meta access token found' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const encryptedToken = await encryptMetaToken(tokenToStore)
+
+    // Update the user's profile with the encrypted Meta access token
     const { error: updateError } = await supabaseClient
       .from('profiles')
       .update({
-        meta_access_token: metaAccessToken || session?.provider_token,
+        meta_access_token: encryptedToken,
         meta_user_id: fbUserId,
         updated_at: new Date().toISOString()
       })
