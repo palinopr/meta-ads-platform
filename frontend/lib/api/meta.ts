@@ -131,4 +131,84 @@ export class MetaAPI {
       return { data: null, error: error.message };
     }
   }
+
+  async updateCampaign(updateData: any): Promise<MetaAPIResponse<any>> {
+    try {
+      const { data, error } = await this.supabaseClient.functions.invoke('update-campaign', {
+        body: updateData
+      });
+
+      if (error) {
+        return { data: null, error: error.message };
+      }
+
+      return { data: data || null, success: true };
+    } catch (error: any) {
+      return { data: null, error: error.message };
+    }
+  }
+
+  async pauseCampaign(campaignId: string): Promise<MetaAPIResponse<any>> {
+    try {
+      const { data, error } = await this.supabaseClient.functions.invoke('pause-campaign', {
+        body: { campaign_id: campaignId, action: 'pause' }
+      });
+
+      if (error) {
+        return { data: null, error: error.message };
+      }
+
+      return { data: data || null, success: true };
+    } catch (error: any) {
+      return { data: null, error: error.message };
+    }
+  }
+
+  async resumeCampaign(campaignId: string): Promise<MetaAPIResponse<any>> {
+    try {
+      const { data, error } = await this.supabaseClient.functions.invoke('pause-campaign', {
+        body: { campaign_id: campaignId, action: 'resume' }
+      });
+
+      if (error) {
+        return { data: null, error: error.message };
+      }
+
+      return { data: data || null, success: true };
+    } catch (error: any) {
+      return { data: null, error: error.message };
+    }
+  }
+
+  async deleteCampaign(campaignId: string): Promise<MetaAPIResponse<any>> {
+    try {
+      const { data, error } = await this.supabaseClient.functions.invoke('delete-campaign', {
+        body: { campaign_id: campaignId }
+      });
+
+      if (error) {
+        return { data: null, error: error.message };
+      }
+
+      return { data: data || null, success: true };
+    } catch (error: any) {
+      return { data: null, error: error.message };
+    }
+  }
+
+  async duplicateCampaign(campaignId: string, newName?: string): Promise<MetaAPIResponse<any>> {
+    try {
+      const { data, error } = await this.supabaseClient.functions.invoke('duplicate-campaign', {
+        body: { campaign_id: campaignId, new_name: newName }
+      });
+
+      if (error) {
+        return { data: null, error: error.message };
+      }
+
+      return { data: data || null, success: true };
+    } catch (error: any) {
+      return { data: null, error: error.message };
+    }
+  }
 }

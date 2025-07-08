@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { withSentryMonitoring, captureBusinessError, capturePerformanceMetric, withPerformanceSpan, logBusinessEvent } from '../_shared/sentry-config.ts'
 
 // Token encryption utilities
 async function encryptToken(token: string): Promise<string> {
@@ -115,10 +116,14 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-serve(async (req) => {
+serve(withSentryMonitoring('sync-meta-token', async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
+
+  const startTime = Date.now()
+  let success = false
+  let userId = 'unknown'
 
   try {
     // Create Supabase admin client
@@ -136,6 +141,13 @@ serve(async (req) => {
     // Get the authorization header
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
+      captureBusinessError(new Error('No authorization header'), {
+        functionName: 'sync-meta-token',
+        businessImpact: 'high',
+        affectedRevenue: 'User cannot connect Meta account',
+        customerImpact: 'Authentication failure prevents Meta integration',
+        additionalContext: { missingAuthHeader: true }
+      })
       return new Response(
         JSON.stringify({ error: 'No authorization header' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -159,9 +171,18 @@ serve(async (req) => {
     )
 
     // Get the user's session - this should contain provider_token if just authenticated
-    const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession()
+    const { data: { session }, error: sessionError } = await withPerformanceSpan('get-user-session', 'Retrieve user session from auth', async () => {
+      return await supabaseClient.auth.getSession()
+    })
     
     if (sessionError || !session) {
+      captureBusinessError(sessionError || new Error('No session found'), {
+        functionName: 'sync-meta-token',
+        businessImpact: 'high',
+        affectedRevenue: 'User cannot connect Meta account',
+        customerImpact: 'Session validation failure prevents Meta integration',
+        additionalContext: { sessionError: sessionError?.message, noSession: !session }
+      })
       return new Response(
         JSON.stringify({ error: 'No session found' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -169,6 +190,7 @@ serve(async (req) => {
     }
 
     const user = session.user
+    userId = user.id
 
     // Check for Facebook identity
     const facebookIdentity = user.identities?.find(
@@ -176,6 +198,17 @@ serve(async (req) => {
     )
 
     if (!facebookIdentity) {
+      captureBusinessError(new Error('No Facebook identity found'), {
+        functionName: 'sync-meta-token',
+        businessImpact: 'high',
+        affectedRevenue: 'User cannot connect Meta account',
+        customerImpact: 'Missing Facebook identity prevents Meta integration',
+        additionalContext: { 
+          userId: user.id,
+          identityCount: user.identities?.length || 0,
+          identityProviders: user.identities?.map(i => i.provider) || []
+        }
+      })
       return new Response(
         JSON.stringify({ error: 'No Facebook identity found' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -213,9 +246,30 @@ serve(async (req) => {
     // Encrypt the Meta access token before storing
     let encryptedToken: string
     try {
-      encryptedToken = await encryptToken(metaAccessToken)
+      encryptedToken = await withPerformanceSpan('encrypt-meta-token', 'Encrypt Meta access token with AES-GCM', async () => {
+        return await encryptToken(metaAccessToken)
+      })
+      
+      logBusinessEvent('Token encrypted successfully', {
+        functionName: 'sync-meta-token',
+        userId: user.id,
+        action: 'encrypt-token',
+        result: 'success',
+        additionalData: { encryptionMethod: 'AES-GCM-256' }
+      })
     } catch (encryptionError) {
       console.error('Token encryption failed:', encryptionError)
+      captureBusinessError(encryptionError, {
+        functionName: 'sync-meta-token',
+        businessImpact: 'critical',
+        affectedRevenue: 'User cannot connect Meta account, security failure',
+        customerImpact: 'Token encryption failure prevents secure storage',
+        additionalContext: { 
+          userId: user.id,
+          encryptionError: encryptionError.message,
+          hasEncryptionKey: !!Deno.env.get('META_TOKEN_ENCRYPTION_KEY')
+        }
+      })
       return new Response(
         JSON.stringify({ error: 'Failed to encrypt Meta access token' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -223,17 +277,31 @@ serve(async (req) => {
     }
 
     // Update the user's profile with the encrypted Meta access token
-    const { error: updateError } = await supabaseAdmin
-      .from('profiles')
-      .update({
-        meta_access_token: encryptedToken,
-        meta_user_id: facebookIdentity.id,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', user.id)
+    const { error: updateError } = await withPerformanceSpan('update-profile', 'Update user profile with encrypted token', async () => {
+      return await supabaseAdmin
+        .from('profiles')
+        .update({
+          meta_access_token: encryptedToken,
+          meta_user_id: facebookIdentity.id,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id)
+    })
 
     if (updateError) {
       console.error('Error updating profile:', updateError)
+      captureBusinessError(updateError, {
+        functionName: 'sync-meta-token',
+        businessImpact: 'critical',
+        affectedRevenue: 'User cannot connect Meta account, database failure',
+        customerImpact: 'Profile update failure prevents Meta integration',
+        additionalContext: { 
+          userId: user.id,
+          updateError: updateError.message,
+          errorCode: updateError.code,
+          errorDetails: updateError.details
+        }
+      })
       return new Response(
         JSON.stringify({ error: 'Failed to save Meta access token' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -255,6 +323,33 @@ serve(async (req) => {
       console.error('Error verifying token:', error)
     }
 
+    // Mark as successful and capture performance metrics
+    success = true
+    const duration = Date.now() - startTime
+    
+    capturePerformanceMetric('sync-meta-token', duration, {
+      functionName: 'sync-meta-token',
+      success: true,
+      recordCount: 1,
+      apiCalls: 1,
+      additionalMetrics: {
+        hasEncryptedToken: true,
+        tokenVerified: true
+      }
+    })
+
+    logBusinessEvent('Meta account connected successfully', {
+      functionName: 'sync-meta-token',
+      userId: user.id,
+      action: 'connect-meta-account',
+      result: 'success',
+      additionalData: {
+        metaUserId: facebookIdentity.id,
+        hasEncryptedToken: true,
+        tokenVerified: true
+      }
+    })
+
     return new Response(
       JSON.stringify({ 
         success: true,
@@ -264,11 +359,43 @@ serve(async (req) => {
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in sync-meta-token:', error)
+    
+    // Capture performance metrics for failed request
+    const duration = Date.now() - startTime
+    capturePerformanceMetric('sync-meta-token', duration, {
+      functionName: 'sync-meta-token',
+      success: false,
+      recordCount: 0,
+      apiCalls: 0,
+      additionalMetrics: {
+        errorType: error.name || 'UnknownError',
+        userId: userId
+      }
+    })
+
+    // Capture unexpected error with critical business impact
+    captureBusinessError(error, {
+      functionName: 'sync-meta-token',
+      businessImpact: 'critical',
+      affectedRevenue: 'User cannot connect Meta account, authentication failure',
+      customerImpact: 'System error prevents Meta integration',
+      additionalContext: {
+        userId: userId,
+        errorName: error.name,
+        errorMessage: error.message,
+        errorStack: error.stack,
+        unexpectedError: true
+      }
+    })
+
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
-})
+}, {
+  category: 'authentication',
+  criticalPath: true
+}))

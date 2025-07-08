@@ -22,7 +22,10 @@ import {
   Eye,
   MousePointerClick,
   AlertCircle,
-  Loader2
+  Loader2,
+  Trash2,
+  Copy,
+  Plus
 } from 'lucide-react'
 
 export function CampaignsClient() {
@@ -240,9 +243,132 @@ export function CampaignsClient() {
     }
   }
 
-  const handlePauseCampaign = async (campaignId: string) => {
-    // TODO: Implement pause campaign
-    console.log('Pause campaign:', campaignId)
+  const handlePauseCampaign = async (campaignId: string, currentStatus: string) => {
+    try {
+      setError(null)
+      
+      const campaign = campaigns.find(c => c.campaign_id === campaignId)
+      if (!campaign) {
+        setError('Campaign not found')
+        return
+      }
+      
+      const isCurrentlyActive = currentStatus === 'ACTIVE'
+      const action = isCurrentlyActive ? 'pause' : 'resume'
+      
+      console.log(`${action}ing campaign:`, campaignId)
+      
+      const response = isCurrentlyActive 
+        ? await api.pauseCampaign(campaignId)
+        : await api.resumeCampaign(campaignId)
+      
+      if (response.error) {
+        console.error(`Failed to ${action} campaign:`, response.error)
+        setError(response.error)
+        return
+      }
+      
+      if (response.data?.tokenExpired) {
+        setError('Your Meta access token has expired. Please reconnect your account in Settings.')
+        return
+      }
+      
+      // Update the campaign status in the local state
+      setCampaigns(campaigns.map(c => 
+        c.campaign_id === campaignId 
+          ? { ...c, status: isCurrentlyActive ? 'PAUSED' : 'ACTIVE' }
+          : c
+      ))
+      
+      console.log(`Campaign ${action}d successfully`)
+    } catch (error: any) {
+      console.error(`Failed to ${currentStatus === 'ACTIVE' ? 'pause' : 'resume'} campaign:`, error)
+      setError(error.message || 'Failed to update campaign')
+    }
+  }
+
+  const handleDeleteCampaign = async (campaignId: string) => {
+    try {
+      setError(null)
+      
+      const campaign = campaigns.find(c => c.campaign_id === campaignId)
+      if (!campaign) {
+        setError('Campaign not found')
+        return
+      }
+      
+      // Confirmation dialog
+      const confirmDelete = window.confirm(
+        `Are you sure you want to delete "${campaign.name}"? This action cannot be undone.`
+      )
+      
+      if (!confirmDelete) return
+      
+      console.log('Deleting campaign:', campaignId)
+      
+      const response = await api.deleteCampaign(campaignId)
+      
+      if (response.error) {
+        console.error('Failed to delete campaign:', response.error)
+        setError(response.error)
+        return
+      }
+      
+      if (response.data?.tokenExpired) {
+        setError('Your Meta access token has expired. Please reconnect your account in Settings.')
+        return
+      }
+      
+      if (response.data?.requiresPause) {
+        setError('Cannot delete active campaigns with significant budget. Please pause the campaign first.')
+        return
+      }
+      
+      // Remove the campaign from the local state
+      setCampaigns(campaigns.filter(c => c.campaign_id !== campaignId))
+      
+      console.log('Campaign deleted successfully')
+    } catch (error: any) {
+      console.error('Failed to delete campaign:', error)
+      setError(error.message || 'Failed to delete campaign')
+    }
+  }
+
+  const handleDuplicateCampaign = async (campaignId: string) => {
+    try {
+      setError(null)
+      
+      const campaign = campaigns.find(c => c.campaign_id === campaignId)
+      if (!campaign) {
+        setError('Campaign not found')
+        return
+      }
+      
+      console.log('Duplicating campaign:', campaignId)
+      
+      const response = await api.duplicateCampaign(campaignId)
+      
+      if (response.error) {
+        console.error('Failed to duplicate campaign:', response.error)
+        setError(response.error)
+        return
+      }
+      
+      if (response.data?.tokenExpired) {
+        setError('Your Meta access token has expired. Please reconnect your account in Settings.')
+        return
+      }
+      
+      // Add the new campaign to the local state
+      if (response.data?.campaign) {
+        setCampaigns([...campaigns, response.data.campaign])
+      }
+      
+      console.log('Campaign duplicated successfully')
+    } catch (error: any) {
+      console.error('Failed to duplicate campaign:', error)
+      setError(error.message || 'Failed to duplicate campaign')
+    }
   }
 
   const getStatusColor = (status: string) => {
@@ -299,7 +425,13 @@ export function CampaignsClient() {
             <RefreshCw className={`h-4 w-4 mr-2 ${loadingCampaigns ? 'animate-spin' : ''}`} />
             Sync from Meta
           </Button>
-          <Button disabled={!selectedAccount}>Create Campaign</Button>
+          <Button 
+            disabled={!selectedAccount}
+            onClick={() => window.alert('Campaign creation modal coming soon!')}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Create Campaign
+          </Button>
         </div>
       </div>
 
@@ -406,14 +538,26 @@ export function CampaignsClient() {
                 </div>
                 
                 <div className="flex justify-end space-x-2">
-                  <Button variant="outline" size="sm">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => window.alert('Campaign editing modal coming soon!')}
+                  >
                     <Edit className="h-4 w-4 mr-1" />
                     Edit
                   </Button>
                   <Button 
                     variant="outline" 
                     size="sm"
-                    onClick={() => handlePauseCampaign(campaign.campaign_id)}
+                    onClick={() => handleDuplicateCampaign(campaign.campaign_id)}
+                  >
+                    <Copy className="h-4 w-4 mr-1" />
+                    Duplicate
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => handlePauseCampaign(campaign.campaign_id, campaign.status)}
                   >
                     {campaign.status === 'ACTIVE' ? (
                       <>
@@ -426,6 +570,14 @@ export function CampaignsClient() {
                         Resume
                       </>
                     )}
+                  </Button>
+                  <Button 
+                    variant="destructive" 
+                    size="sm"
+                    onClick={() => handleDeleteCampaign(campaign.campaign_id)}
+                  >
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    Delete
                   </Button>
                   <Button 
                     variant="default" 
