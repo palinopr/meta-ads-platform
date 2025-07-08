@@ -43,10 +43,15 @@ export function SettingsClient({ user, profile }: SettingsClientProps) {
           await new Promise(resolve => setTimeout(resolve, 2000))
           
           // Try to sync the Meta token from the session
-          const { data: syncData, error: syncError } = await supabase.functions.invoke('sync-meta-token-v2')
-          
-          if (syncError) {
-            console.error('Error syncing Meta token:', syncError)
+          try {
+            const { data: syncData, error: syncError } = await supabase.functions.invoke('sync-meta-token-v2')
+            
+            if (syncError) {
+              console.error('Error syncing Meta token:', syncError)
+              // Not critical - the callback should have already saved the token
+            }
+          } catch (e) {
+            console.log('Token sync skipped - likely already saved by callback')
           }
           
           // Fetch the latest profile data

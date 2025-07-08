@@ -66,7 +66,7 @@ export class MetaAPI {
 
   async getCampaigns(accountId: string): Promise<MetaAPIResponse<Campaign[]>> {
     try {
-      const { data, error } = await this.supabaseClient.functions.invoke('sync-campaigns-v2', {
+      const { data, error } = await this.supabaseClient.functions.invoke('sync-campaigns-v3', {
         body: { account_id: accountId }
       });
 
@@ -82,7 +82,7 @@ export class MetaAPI {
 
   async syncAccount(accountId: string): Promise<MetaAPIResponse<any>> {
     try {
-      const { data, error } = await this.supabaseClient.functions.invoke('sync-campaigns-v2', {
+      const { data, error } = await this.supabaseClient.functions.invoke('sync-campaigns-v3', {
         body: { account_id: accountId }
       });
 
