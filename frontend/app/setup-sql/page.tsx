@@ -67,8 +67,7 @@ BEGIN
     c.created_time,
     c.updated_time
   FROM campaigns c
-  WHERE c.account_id = v_account_record_id
-    AND c.user_id = v_user_id
+  WHERE c.ad_account_id = v_account_record_id
   ORDER BY c.created_time DESC;
 END;
 $$;
