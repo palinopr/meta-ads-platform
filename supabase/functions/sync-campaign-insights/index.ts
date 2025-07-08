@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { getDecryptedMetaToken } from '../_shared/token-encryption.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -94,17 +95,13 @@ serve(async (req) => {
       )
     }
 
-    // Get user's Meta access token
-    const { data: profile, error: profileError } = await supabaseAdmin
-      .from('profiles')
-      .select('meta_access_token')
-      .eq('id', user.id)
-      .single()
-
-    if (profileError || !profile?.meta_access_token) {
-      console.error('Profile error:', profileError)
+    // Get user's Meta access token (decrypted)
+    const metaAccessToken = await getDecryptedMetaToken(supabaseAdmin, user.id)
+    
+    if (!metaAccessToken) {
+      console.error('No Meta access token found or decryption failed')
       return new Response(
-        JSON.stringify({ error: 'No Meta access token found' }),
+        JSON.stringify({ error: 'No Meta access token found or token is invalid' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -139,7 +136,7 @@ serve(async (req) => {
       // Fetch campaigns directly from Meta API since our database might not have them yet
       console.log('Fetching campaigns from Meta API for account:', cleanAccountId)
       
-      const campaignsUrl = `https://graph.facebook.com/v19.0/act_${cleanAccountId}/campaigns?fields=id,name,status&access_token=${profile.meta_access_token}`
+      const campaignsUrl = `https://graph.facebook.com/v19.0/act_${cleanAccountId}/campaigns?fields=id,name,status&access_token=${metaAccessToken}`
       
       try {
         const campaignsResponse = await fetch(campaignsUrl)
@@ -203,7 +200,7 @@ serve(async (req) => {
         'frequency'
       ].join(',')
 
-      const metaUrl = `https://graph.facebook.com/v19.0/insights?ids=${campaignIdsParam}&fields=${insightsFields}&date_preset=${date_preset}&level=campaign&access_token=${profile.meta_access_token}`
+      const metaUrl = `https://graph.facebook.com/v19.0/insights?ids=${campaignIdsParam}&fields=${insightsFields}&date_preset=${date_preset}&level=campaign&access_token=${metaAccessToken}`
       
       try {
         const metaResponse = await fetch(metaUrl)
