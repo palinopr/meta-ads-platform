@@ -173,16 +173,12 @@ export function DashboardClient() {
       setSyncing(true)
       setError(null)
       
-      // Step 1: Sync campaigns metadata
-      await api.syncAccount(selectedAccount)
+      // Dashboard now uses direct Meta API calls - no database sync needed
       
-      // Step 2: Sync real campaign insights from Meta API
-      await api.syncCampaignInsights(selectedAccount, 'last_30d')
-      
-      // Step 3: Refresh dashboard with new data (force refresh cache)
+      // Step 1: Refresh dashboard with direct API data
       await loadMetrics(selectedAccount)
       
-      // Step 4: Refresh chart data
+      // Step 2: Refresh chart data
       await loadChartData(selectedAccount)
       
       console.log('✅ Complete data sync finished for account:', selectedAccount)

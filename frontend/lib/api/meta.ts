@@ -86,7 +86,8 @@ export class MetaAPI {
 
   async getCampaignMetrics(campaignId: string, startDate?: Date, endDate?: Date): Promise<MetaAPIResponse<CampaignMetrics[]>> {
     try {
-      const { data, error } = await this.supabaseClient.functions.invoke('get-campaign-metrics', {
+      // Fetch metrics directly from Meta API (not from database)
+      const { data, error } = await this.supabaseClient.functions.invoke('get-campaign-metrics-from-meta', {
         body: { 
           campaign_id: campaignId,
           start_date: startDate?.toISOString(),
@@ -106,7 +107,8 @@ export class MetaAPI {
 
   async createCampaign(campaignData: any): Promise<MetaAPIResponse<any>> {
     try {
-      const { data, error } = await this.supabaseClient.functions.invoke('create-campaign', {
+      // Create campaign directly via Meta API (no database storage)
+      const { data, error } = await this.supabaseClient.functions.invoke('create-campaign-meta-only', {
         body: campaignData
       });
 
@@ -122,7 +124,8 @@ export class MetaAPI {
 
   async updateCampaign(updateData: any): Promise<MetaAPIResponse<any>> {
     try {
-      const { data, error } = await this.supabaseClient.functions.invoke('update-campaign', {
+      // Update campaign directly via Meta API (no database storage)
+      const { data, error } = await this.supabaseClient.functions.invoke('update-campaign-meta-only', {
         body: updateData
       });
 
@@ -138,7 +141,8 @@ export class MetaAPI {
 
   async pauseCampaign(campaignId: string): Promise<MetaAPIResponse<any>> {
     try {
-      const { data, error } = await this.supabaseClient.functions.invoke('pause-campaign', {
+      // Pause campaign directly via Meta API (no database storage)
+      const { data, error } = await this.supabaseClient.functions.invoke('pause-campaign-meta-only', {
         body: { campaign_id: campaignId, action: 'pause' }
       });
 
@@ -154,7 +158,8 @@ export class MetaAPI {
 
   async resumeCampaign(campaignId: string): Promise<MetaAPIResponse<any>> {
     try {
-      const { data, error } = await this.supabaseClient.functions.invoke('pause-campaign', {
+      // Resume campaign directly via Meta API (no database storage)
+      const { data, error } = await this.supabaseClient.functions.invoke('pause-campaign-meta-only', {
         body: { campaign_id: campaignId, action: 'resume' }
       });
 
@@ -170,7 +175,8 @@ export class MetaAPI {
 
   async deleteCampaign(campaignId: string): Promise<MetaAPIResponse<any>> {
     try {
-      const { data, error } = await this.supabaseClient.functions.invoke('delete-campaign', {
+      // Delete campaign directly via Meta API (no database storage)
+      const { data, error } = await this.supabaseClient.functions.invoke('delete-campaign-meta-only', {
         body: { campaign_id: campaignId }
       });
 
@@ -186,7 +192,8 @@ export class MetaAPI {
 
   async duplicateCampaign(campaignId: string, newName?: string): Promise<MetaAPIResponse<any>> {
     try {
-      const { data, error } = await this.supabaseClient.functions.invoke('duplicate-campaign', {
+      // Duplicate campaign directly via Meta API (no database storage)
+      const { data, error } = await this.supabaseClient.functions.invoke('duplicate-campaign-meta-only', {
         body: { campaign_id: campaignId, new_name: newName }
       });
 

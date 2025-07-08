@@ -111,32 +111,9 @@ export class MetaAPIFixed {
         return []
       }
 
-      // Now fetch campaigns directly
-      const { data, error } = await this.supabase
-        .from('campaigns')
-        .select('*')
-        .eq('ad_account_id', account.id)
-        .order('created_time', { ascending: false })
-
-      if (error) {
-        console.error('Error fetching campaigns:', error)
-        return []
-      }
-
-      // Map the data to include account_id field and handle type differences
-      return (data || []).map(campaign => ({
-        campaign_id: campaign.campaign_id,
-        account_id: accountId,
-        name: campaign.name,
-        objective: campaign.objective,
-        status: campaign.status,
-        daily_budget: campaign.daily_budget || undefined,
-        lifetime_budget: campaign.lifetime_budget || undefined,
-        start_time: campaign.start_time || undefined,
-        stop_time: campaign.stop_time || undefined,
-        created_time: campaign.created_time,
-        updated_time: campaign.updated_time || campaign.created_time
-      }))
+      // This function is deprecated - campaigns should be fetched directly from Meta API
+      console.warn('meta-fixed.getCampaigns() is deprecated. Use MetaAPI.getCampaigns() for direct Meta API access.')
+      return []
     } catch (error) {
       console.error('Unexpected error in getCampaigns:', error)
       return []
