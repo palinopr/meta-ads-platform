@@ -8,10 +8,12 @@ import { withSentryMonitoring, captureBusinessError, capturePerformanceMetric, w
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Max-Age': '86400',
 }
 
 serve(withSentryMonitoring('meta-accounts-v2', async (req) => {
-  // Handle CORS
+  // Handle CORS preflight requests immediately
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
