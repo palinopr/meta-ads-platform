@@ -66,7 +66,7 @@ export class MetaAPI {
 
   async getCampaigns(accountId: string): Promise<MetaAPIResponse<Campaign[]>> {
     try {
-      const { data, error } = await this.supabaseClient.functions.invoke('get-campaigns-direct', {
+      const { data, error } = await this.supabaseClient.functions.invoke('get-campaigns-from-meta', {
         body: { account_id: accountId }
       });
 
@@ -81,21 +81,8 @@ export class MetaAPI {
     }
   }
 
-  async syncAccount(accountId: string): Promise<MetaAPIResponse<any>> {
-    try {
-      const { data, error } = await this.supabaseClient.functions.invoke('sync-campaigns-direct', {
-        body: { account_id: accountId }
-      });
-
-      if (error) {
-        return { data: {}, error: error.message };
-      }
-
-      return { data: data || {}, success: true };
-    } catch (error: any) {
-      return { data: {}, error: error.message };
-    }
-  }
+  // Note: Campaigns are now fetched directly from Meta API
+  // No sync needed - data is always fresh from Meta
 
   async getCampaignMetrics(campaignId: string, startDate?: Date, endDate?: Date): Promise<MetaAPIResponse<CampaignMetrics[]>> {
     try {

@@ -114,45 +114,19 @@ export function CampaignsClient() {
         }
       }
       
-      // Sync campaigns from Meta API (but don't show errors for first load)
-      try {
-        const syncResult = await api.syncAccount(selectedAccount)
-        console.log('Auto-sync result:', syncResult)
-      } catch (syncError: any) {
-        // Silently log sync errors on initial load
-        console.log('Auto-sync skipped:', syncError.message)
-      }
+      // Campaigns are now fetched directly from Meta API - no sync needed
       
-      // Load campaigns using safe API first
-      let campaignData: Campaign[] = []
-      try {
-        const response = await apiSafe.getCampaigns(selectedAccount)
-        if (response.error) {
-          throw new Error(response.error)
-        }
-        campaignData = response.data
-        setCampaigns(campaignData)
-        console.log('Campaigns loaded via safe API:', campaignData.length)
-      } catch (e) {
-        // Try fixed API
-        console.error('Safe API failed, trying fixed API:', e)
-        try {
-          campaignData = await apiFixed.getCampaigns(selectedAccount)
-          setCampaigns(campaignData)
-        } catch (e2) {
-          // Final fallback to original API
-          console.error('Fixed API failed, trying original:', e2)
-          const response = await api.getCampaigns(selectedAccount)
-          if (response.error) {
-            throw new Error(response.error)
-          }
-          campaignData = response.data
-          setCampaigns(campaignData)
-        }
+      // Load campaigns directly from Meta API
+      const response = await api.getCampaigns(selectedAccount)
+      if (response.error) {
+        throw new Error(response.error)
       }
+      const campaignData = response.data
+      setCampaigns(campaignData)
+      console.log('Campaigns loaded from Meta API:', campaignData.length)
       
       if (campaignData.length === 0) {
-        setError('No campaigns found. Click "Sync from Meta" to fetch campaigns from your Meta account.')
+        setError('No campaigns found in this Meta account.')
       }
     } catch (error: any) {
       console.error('Failed to load campaigns:', error)
@@ -162,66 +136,6 @@ export function CampaignsClient() {
     }
   }
 
-  const syncAndLoadCampaigns = async () => {
-    if (!selectedAccount) return
-
-    try {
-      setLoadingCampaigns(true)
-      setError(null)
-      
-      console.log('Syncing campaigns for account:', selectedAccount)
-      
-      // First sync campaigns from Meta API
-      try {
-        await api.syncAccount(selectedAccount)
-        console.log('Campaigns synced successfully')
-      } catch (syncError: any) {
-        console.error('Sync error:', syncError)
-        if (syncError?.tokenExpired) {
-          setError('Your Meta access token has expired. Please reconnect your account in Settings.')
-          return
-        }
-        // Continue to load existing campaigns even if sync fails
-      }
-      
-      // Then load the campaigns
-      let campaignData: Campaign[] = []
-      try {
-        const response = await apiSafe.getCampaigns(selectedAccount)
-        if (response.error) {
-          throw new Error(response.error)
-        }
-        campaignData = response.data
-        setCampaigns(campaignData)
-        console.log('Campaigns loaded via safe API:', campaignData.length)
-      } catch (e) {
-        // Try fixed API
-        console.error('Safe API failed, trying fixed API:', e)
-        try {
-          campaignData = await apiFixed.getCampaigns(selectedAccount)
-          setCampaigns(campaignData)
-        } catch (e2) {
-          // Final fallback to original API
-          console.error('Fixed API failed, trying original:', e2)
-          const response = await api.getCampaigns(selectedAccount)
-          if (response.error) {
-            throw new Error(response.error)
-          }
-          campaignData = response.data
-          setCampaigns(campaignData)
-        }
-      }
-      
-      if (campaignData.length === 0) {
-        setError('No campaigns found. This account might not have any campaigns.')
-      }
-    } catch (error: any) {
-      console.error('Failed to sync/load campaigns:', error)
-      setError(error.message || 'Failed to load campaigns')
-    } finally {
-      setLoadingCampaigns(false)
-    }
-  }
 
   const loadCampaigns = async () => {
     if (!selectedAccount) return
@@ -416,14 +330,6 @@ export function CampaignsClient() {
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${loadingCampaigns ? 'animate-spin' : ''}`} />
             Refresh
-          </Button>
-          <Button 
-            variant="outline"
-            onClick={syncAndLoadCampaigns}
-            disabled={!selectedAccount || loadingCampaigns}
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${loadingCampaigns ? 'animate-spin' : ''}`} />
-            Sync from Meta
           </Button>
           <Button 
             variant="outline"
