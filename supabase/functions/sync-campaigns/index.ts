@@ -104,24 +104,29 @@ serve(async (req) => {
       )
     }
 
+    // Clean account_id (remove act_ prefix if present)
+    const cleanAccountId = account_id.replace(/^act_/, '')
+    
     // Get the ad account record using admin client
     const { data: adAccount, error: adAccountError } = await supabaseAdmin
       .from('meta_ad_accounts')
-      .select('id')
-      .eq('account_id', account_id)
+      .select('id, account_name')
+      .eq('account_id', cleanAccountId)
       .eq('user_id', user.id)
       .single()
 
     if (adAccountError || !adAccount) {
       console.error('Ad account error:', adAccountError)
       return new Response(
-        JSON.stringify({ error: 'Ad account not found' }),
+        JSON.stringify({ error: `Ad account not found for account_id: ${cleanAccountId}` }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
+    console.log('Found meta account:', adAccount.id, adAccount.account_name)
+
     // Fetch campaigns from Meta API
-    const metaUrl = `https://graph.facebook.com/v19.0/act_${account_id}/campaigns?fields=id,name,status,objective,daily_budget,lifetime_budget,created_time,updated_time,start_time,stop_time&limit=100&access_token=${profile.meta_access_token}`
+    const metaUrl = `https://graph.facebook.com/v19.0/act_${cleanAccountId}/campaigns?fields=id,name,status,objective,daily_budget,lifetime_budget,created_time,updated_time,start_time,stop_time&limit=100&access_token=${profile.meta_access_token}`
     
     const metaResponse = await fetch(metaUrl)
     
@@ -153,18 +158,18 @@ serve(async (req) => {
     // Transform and upsert campaigns
     if (metaData.data && metaData.data.length > 0) {
       const campaignsToUpsert = metaData.data.map((campaign: any) => ({
-        ad_account_id: adAccount.id,
+        account_id: cleanAccountId, // Use TEXT account_id instead of UUID
+        user_id: user.id, // Add user_id for RLS
         campaign_id: campaign.id,
-        name: campaign.name,
+        name: campaign.name, // Use 'name' field to match new schema
         status: campaign.status,
         objective: campaign.objective,
         daily_budget: campaign.daily_budget ? parseFloat(campaign.daily_budget) / 100 : null, // Convert from cents
         lifetime_budget: campaign.lifetime_budget ? parseFloat(campaign.lifetime_budget) / 100 : null,
         created_time: campaign.created_time,
-        updated_time: campaign.updated_time || campaign.created_time,
         start_time: campaign.start_time || null,
-        stop_time: campaign.stop_time || null,
-        is_active: campaign.status === 'ACTIVE',
+        stop_time: campaign.stop_time || null, // Use stop_time to match new schema
+        created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       }))
 
@@ -177,7 +182,7 @@ serve(async (req) => {
         const { data: batchData, error: batchError } = await supabaseAdmin
           .from('campaigns')
           .upsert(batch, { 
-            onConflict: 'ad_account_id,campaign_id',
+            onConflict: 'campaign_id,user_id',
             ignoreDuplicates: false 
           })
           .select()

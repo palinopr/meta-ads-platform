@@ -155,9 +155,10 @@ serve(async (req) => {
       .gte('date_start', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]) // Last 30 days
       .order('date_start', { ascending: false })
 
-    // Filter by specific account if provided
+    // Filter by specific account if provided (handle UUID conversion)
     if (account_id) {
-      campaignInsightsQuery = campaignInsightsQuery.eq('campaigns.ad_account_id', account_id)
+      const cleanAccountId = account_id.replace(/^act_/, '') // Remove act_ prefix if present
+      campaignInsightsQuery = campaignInsightsQuery.eq('campaigns.ad_account_id', cleanAccountId)
     }
 
     const { data: insights, error: insightsError } = await campaignInsightsQuery

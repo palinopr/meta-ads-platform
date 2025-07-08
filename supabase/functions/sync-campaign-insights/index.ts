@@ -109,35 +109,66 @@ serve(async (req) => {
       )
     }
 
+    // Clean account ID (remove act_ prefix if present)
+    const cleanAccountId = account_id.replace(/^act_/, '')
+    
+    // Verify account exists and user has access
+    const { data: metaAccount, error: metaAccountError } = await supabaseAdmin
+      .from('meta_ad_accounts')
+      .select('id, account_name')
+      .eq('account_id', cleanAccountId)
+      .eq('user_id', user.id)
+      .single()
+
+    if (metaAccountError || !metaAccount) {
+      console.error('Meta account not found:', metaAccountError)
+      return new Response(
+        JSON.stringify({ error: 'Meta ad account not found for user' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    console.log('Found meta account:', metaAccount.id, metaAccount.account_name)
+
     // Get campaigns from our database or use provided campaign_ids
     let campaignsToSync: string[] = []
     
     if (campaign_ids && Array.isArray(campaign_ids)) {
       campaignsToSync = campaign_ids
     } else {
-      // Get all active campaigns for this account
-      const { data: campaigns, error: campaignsError } = await supabaseAdmin
-        .from('campaigns')
-        .select('campaign_id')
-        .eq('ad_account_id', account_id)
-        .eq('is_active', true)
-
-      if (campaignsError) {
-        console.error('Error fetching campaigns:', campaignsError)
+      // Fetch campaigns directly from Meta API since our database might not have them yet
+      console.log('Fetching campaigns from Meta API for account:', cleanAccountId)
+      
+      const campaignsUrl = `https://graph.facebook.com/v19.0/act_${cleanAccountId}/campaigns?fields=id,name,status&access_token=${profile.meta_access_token}`
+      
+      try {
+        const campaignsResponse = await fetch(campaignsUrl)
+        if (!campaignsResponse.ok) {
+          const errorData = await campaignsResponse.json()
+          console.error('Meta campaigns API error:', errorData)
+          return new Response(
+            JSON.stringify({ error: 'Failed to fetch campaigns from Meta API' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+        
+        const campaignsData = await campaignsResponse.json()
+        campaignsToSync = campaignsData.data?.map((c: any) => c.id) || []
+        
+      } catch (error) {
+        console.error('Error fetching campaigns from Meta:', error)
         return new Response(
-          JSON.stringify({ error: 'Failed to fetch campaigns' }),
+          JSON.stringify({ error: 'Failed to fetch campaigns from Meta API' }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
       }
-
-      campaignsToSync = campaigns?.map(c => c.campaign_id) || []
     }
 
     if (campaignsToSync.length === 0) {
       return new Response(
         JSON.stringify({ 
           success: true,
-          message: 'No campaigns to sync insights for',
+          message: 'No campaigns found for this account',
           insights: []
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -239,9 +270,11 @@ serve(async (req) => {
     const savedInsights: any[] = []
     
     if (allInsights.length > 0) {
-      // Prepare insights for database insertion
+      // Prepare insights for database insertion with new schema
       const insightsToUpsert = allInsights.map(insight => ({
         campaign_id: insight.campaign_id,
+        account_id: cleanAccountId, // Use TEXT account_id to match new schema
+        user_id: user.id,
         date_start: insight.date_start,
         date_stop: insight.date_stop,
         impressions: insight.impressions,
@@ -251,10 +284,8 @@ serve(async (req) => {
         ctr: insight.ctr,
         cpc: insight.cpc,
         cpm: insight.cpm,
-        cost_per_conversion: insight.cost_per_conversion,
-        purchase_roas: insight.purchase_roas,
-        reach: insight.reach,
-        frequency: insight.frequency,
+        roas: insight.purchase_roas || 0,
+        created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       }))
 
@@ -267,7 +298,7 @@ serve(async (req) => {
         const { data: batchData, error: batchError } = await supabaseAdmin
           .from('campaign_insights')
           .upsert(batch, { 
-            onConflict: 'campaign_id,date_start,date_stop',
+            onConflict: 'campaign_id,date_start,user_id',
             ignoreDuplicates: false 
           })
           .select()
