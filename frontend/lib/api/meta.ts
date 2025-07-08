@@ -50,7 +50,7 @@ export class MetaAPI {
 
   async getAdAccounts(): Promise<MetaAPIResponse<MetaAdAccount[]>> {
     try {
-      const { data, error } = await this.supabaseClient.functions.invoke('meta-accounts-v2', {
+      const { data, error } = await this.supabaseClient.functions.invoke('meta-accounts-simple', {
         body: {}
       });
 
