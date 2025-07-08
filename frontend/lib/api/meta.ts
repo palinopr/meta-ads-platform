@@ -23,6 +23,18 @@ export interface Campaign {
   updated_time: string;
 }
 
+export interface CampaignMetrics {
+  date: string;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+  cpc: number;
+  cpm: number;
+  spend: number;
+  conversions: number;
+  roas: number;
+}
+
 export interface MetaAPIResponse<T> {
   data: T;
   error?: string;
