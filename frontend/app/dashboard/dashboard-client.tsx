@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { MetricCard } from "@/components/dashboard/MetricCard"
+import { PerformanceChart } from "@/components/dashboard/PerformanceChart"
+import { TopCampaigns } from "@/components/dashboard/TopCampaigns"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { MetaAPIFixed, MetaAdAccount } from '@/lib/api/meta-fixed'
@@ -292,13 +294,15 @@ export function DashboardClient() {
               <CardHeader>
                 <CardTitle>Performance Overview</CardTitle>
                 <CardDescription>
-                  Daily spend and ROAS trends
+                  Daily spend and ROAS trends over the last 30 days
                 </CardDescription>
               </CardHeader>
               <CardContent className="h-[300px]">
-                <div className="flex items-center justify-center h-full text-muted-foreground">
-                  Performance chart coming soon
-                </div>
+                <PerformanceChart 
+                  timeframe="30d" 
+                  metric="spend" 
+                  height={250}
+                />
               </CardContent>
             </Card>
             
@@ -306,13 +310,14 @@ export function DashboardClient() {
               <CardHeader>
                 <CardTitle>Top Campaigns</CardTitle>
                 <CardDescription>
-                  By conversion value
+                  Ranked by ROAS performance
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="flex items-center justify-center h-[250px] text-muted-foreground">
-                  Campaign list coming soon
-                </div>
+                <TopCampaigns 
+                  maxItems={6}
+                  sortBy="roas"
+                />
               </CardContent>
             </Card>
           </div>
