@@ -5,13 +5,9 @@ import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { MetaAPI, Campaign, MetaAdAccount } from '@/lib/api/meta'
-import { MetaAPIFixed } from '@/lib/api/meta-fixed'
-import { MetaAPISafe } from '@/lib/api/meta-safe'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { AccountSelector } from '@/components/ui/account-selector'
 import { createClient } from '@/lib/supabase/client'
-import { saveAccountSimple } from '@/lib/api/accounts-simple'
-import { saveAccountViaFunction } from '@/lib/api/accounts-function'
 import { 
   RefreshCw, 
   Pause, 
@@ -39,8 +35,6 @@ export function CampaignsClient() {
   
   const supabase = createClient()
   const api = new MetaAPI(supabase)
-  const apiFixed = new MetaAPIFixed()
-  const apiSafe = new MetaAPISafe(supabase)
 
   useEffect(() => {
     loadAdAccounts()
@@ -56,18 +50,13 @@ export function CampaignsClient() {
     try {
       setLoading(true)
       setError(null)
-      console.log('Loading ad accounts...')
       const response = await api.getAdAccounts()
       
-      console.log('Ad accounts response:', response)
-      
       if (response.error) {
-        console.error('Ad accounts error:', response.error)
         setError(response.error)
         return
       }
       
-      console.log(`Loaded ${response.data.length} ad accounts`)
       setAdAccounts(response.data)
       
       // If only one account, auto-select it
@@ -75,7 +64,6 @@ export function CampaignsClient() {
         setSelectedAccount(response.data[0].account_id)
       }
     } catch (error: any) {
-      console.error('Failed to load ad accounts:', error)
       setError(error.message || 'Failed to load ad accounts. Please reconnect your Meta account.')
     } finally {
       setLoading(false)
@@ -96,23 +84,7 @@ export function CampaignsClient() {
         return
       }
       
-      console.log('Selected account:', selectedAccountData)
-      
-      // Ensure the account exists in our database
-      try {
-        // Try the safe API first (uses secure functions)
-        await apiSafe.saveAccount(selectedAccountData)
-        console.log('Account saved successfully via safe API')
-      } catch (e) {
-        console.error('Failed to save account via safe API:', e)
-        // Try the function approach
-        try {
-          await saveAccountViaFunction(selectedAccountData)
-        } catch (e2) {
-          console.error('Failed to save account via function:', e2)
-          // Continue anyway - we can still try to load campaigns
-        }
-      }
+      // Account saving is handled by the direct Meta API functions
       
       // Campaigns are now fetched directly from Meta API - no sync needed
       
@@ -123,13 +95,11 @@ export function CampaignsClient() {
       }
       const campaignData = response.data
       setCampaigns(campaignData)
-      console.log('Campaigns loaded from Meta API:', campaignData.length)
       
       if (campaignData.length === 0) {
         setError('No campaigns found in this Meta account.')
       }
     } catch (error: any) {
-      console.error('Failed to load campaigns:', error)
       setError(error.message || 'Failed to load campaigns')
     } finally {
       setLoadingCampaigns(false)
@@ -150,7 +120,6 @@ export function CampaignsClient() {
       const data = response.data
       setCampaigns(data)
     } catch (error: any) {
-      console.error('Failed to load campaigns:', error)
       setError(error.message || 'Failed to load campaigns')
     } finally {
       setLoadingCampaigns(false)
@@ -170,14 +139,11 @@ export function CampaignsClient() {
       const isCurrentlyActive = currentStatus === 'ACTIVE'
       const action = isCurrentlyActive ? 'pause' : 'resume'
       
-      console.log(`${action}ing campaign:`, campaignId)
-      
       const response = isCurrentlyActive 
         ? await api.pauseCampaign(campaignId)
         : await api.resumeCampaign(campaignId)
       
       if (response.error) {
-        console.error(`Failed to ${action} campaign:`, response.error)
         setError(response.error)
         return
       }
@@ -194,9 +160,7 @@ export function CampaignsClient() {
           : c
       ))
       
-      console.log(`Campaign ${action}d successfully`)
     } catch (error: any) {
-      console.error(`Failed to ${currentStatus === 'ACTIVE' ? 'pause' : 'resume'} campaign:`, error)
       setError(error.message || 'Failed to update campaign')
     }
   }
@@ -218,12 +182,9 @@ export function CampaignsClient() {
       
       if (!confirmDelete) return
       
-      console.log('Deleting campaign:', campaignId)
-      
       const response = await api.deleteCampaign(campaignId)
       
       if (response.error) {
-        console.error('Failed to delete campaign:', response.error)
         setError(response.error)
         return
       }
@@ -241,9 +202,7 @@ export function CampaignsClient() {
       // Remove the campaign from the local state
       setCampaigns(campaigns.filter(c => c.campaign_id !== campaignId))
       
-      console.log('Campaign deleted successfully')
     } catch (error: any) {
-      console.error('Failed to delete campaign:', error)
       setError(error.message || 'Failed to delete campaign')
     }
   }
@@ -258,12 +217,9 @@ export function CampaignsClient() {
         return
       }
       
-      console.log('Duplicating campaign:', campaignId)
-      
       const response = await api.duplicateCampaign(campaignId)
       
       if (response.error) {
-        console.error('Failed to duplicate campaign:', response.error)
         setError(response.error)
         return
       }
@@ -278,9 +234,7 @@ export function CampaignsClient() {
         setCampaigns([...campaigns, response.data.campaign])
       }
       
-      console.log('Campaign duplicated successfully')
     } catch (error: any) {
-      console.error('Failed to duplicate campaign:', error)
       setError(error.message || 'Failed to duplicate campaign')
     }
   }
@@ -330,48 +284,6 @@ export function CampaignsClient() {
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${loadingCampaigns ? 'animate-spin' : ''}`} />
             Refresh
-          </Button>
-          <Button 
-            variant="outline"
-            onClick={async () => {
-              if (!selectedAccount) return
-              try {
-                const { data, error } = await supabase.functions.invoke('test-campaign-sync', {
-                  body: { account_id: selectedAccount }
-                })
-                console.log('Test sync result:', data)
-                if (error) console.error('Test sync error:', error)
-                alert(JSON.stringify(data || error, null, 2))
-              } catch (e: any) {
-                console.error('Test error:', e)
-                alert('Test error: ' + e.message)
-              }
-            }}
-            disabled={!selectedAccount}
-          >
-            Test Debug
-          </Button>
-          <Button 
-            variant="destructive"
-            onClick={async () => {
-              try {
-                setError('Setting up database functions...')
-                const { data, error } = await supabase.functions.invoke('setup-database')
-                console.log('Setup result:', data)
-                if (error) {
-                  console.error('Setup error:', error)
-                  setError('Setup failed: ' + error.message)
-                } else {
-                  setError('✅ Database setup complete! Try syncing now.')
-                  setTimeout(() => setError(null), 3000)
-                }
-              } catch (e: any) {
-                console.error('Setup error:', e)
-                setError('Setup error: ' + e.message)
-              }
-            }}
-          >
-            Setup DB
           </Button>
           <Button 
             disabled={!selectedAccount}
