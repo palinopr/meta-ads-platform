@@ -27,6 +27,8 @@ export function DashboardClient() {
   const [accounts, setAccounts] = useState<MetaAdAccount[]>([])
   const [selectedAccount, setSelectedAccount] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [chartData, setChartData] = useState([])
+  const [chartLoading, setChartLoading] = useState(false)
   const [metrics, setMetrics] = useState({
     totalSpend: 0,
     previousSpend: 0,
@@ -48,6 +50,18 @@ export function DashboardClient() {
     loadAccounts()
   }, [])
 
+  // Auto-refresh charts every 15 minutes (900 seconds)
+  useEffect(() => {
+    if (!selectedAccount) return
+
+    const interval = setInterval(() => {
+      console.log('🔄 Auto-refreshing chart data...')
+      loadChartData(selectedAccount)
+    }, 15 * 60 * 1000) // 15 minutes
+
+    return () => clearInterval(interval)
+  }, [selectedAccount])
+
   const loadAccounts = async () => {
     try {
       setLoading(true)
@@ -58,6 +72,7 @@ export function DashboardClient() {
       if (data.length > 0) {
         setSelectedAccount(data[0].account_id)
         await loadMetrics(data[0].account_id)
+        await loadChartData(data[0].account_id)
       }
     } catch (err) {
       setError('Failed to load ad accounts. Please connect your Meta account.')
@@ -131,6 +146,26 @@ export function DashboardClient() {
     }
   }
 
+  const loadChartData = async (accountId: string) => {
+    try {
+      setChartLoading(true)
+      setError(null)
+      
+      console.log('📊 Loading real chart data for account:', accountId)
+      const data = await api.getChartData(accountId, 'last_30d')
+      
+      setChartData(data)
+      console.log('✅ Loaded chart data:', data.length, 'data points')
+      
+    } catch (err) {
+      console.error('Failed to load chart data:', err)
+      setError('Failed to load chart data. Showing default view.')
+      setChartData([]) // This will trigger mock data in PerformanceChart
+    } finally {
+      setChartLoading(false)
+    }
+  }
+
   const syncData = async () => {
     if (!selectedAccount) return
 
@@ -146,6 +181,9 @@ export function DashboardClient() {
       
       // Step 3: Refresh dashboard with new data (force refresh cache)
       await loadMetrics(selectedAccount)
+      
+      // Step 4: Refresh chart data
+      await loadChartData(selectedAccount)
       
       console.log('✅ Complete data sync finished for account:', selectedAccount)
       
@@ -178,9 +216,10 @@ export function DashboardClient() {
               <select 
                 className="px-3 py-2 border rounded-md"
                 value={selectedAccount || ''}
-                onChange={(e) => {
+                onChange={async (e) => {
                   setSelectedAccount(e.target.value)
-                  loadMetrics(e.target.value)
+                  await loadMetrics(e.target.value)
+                  await loadChartData(e.target.value)
                 }}
               >
                 {accounts.map(account => (
@@ -298,11 +337,19 @@ export function DashboardClient() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="h-[300px]">
-                <PerformanceChart 
-                  timeframe="30d" 
-                  metric="spend" 
-                  height={250}
-                />
+                {chartLoading ? (
+                  <div className="flex items-center justify-center h-full">
+                    <RefreshCw className="h-6 w-6 animate-spin mr-2" />
+                    <span>Loading chart data...</span>
+                  </div>
+                ) : (
+                  <PerformanceChart 
+                    data={chartData}
+                    timeframe="30d" 
+                    metric="spend" 
+                    height={250}
+                  />
+                )}
               </CardContent>
             </Card>
             

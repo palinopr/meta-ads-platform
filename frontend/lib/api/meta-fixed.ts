@@ -201,4 +201,26 @@ export class MetaAPIFixed {
       throw error
     }
   }
+
+  // Get chart data from Meta API
+  async getChartData(accountId: string, datePreset = 'last_30d'): Promise<any> {
+    try {
+      const { data, error } = await this.supabase.functions.invoke('get-chart-data', {
+        body: {
+          account_id: accountId,
+          date_preset: datePreset
+        }
+      })
+
+      if (error) {
+        console.error('Error fetching chart data:', error)
+        throw error
+      }
+
+      return data?.data || []
+    } catch (error) {
+      console.error('Error fetching chart data:', error)
+      throw error
+    }
+  }
 }
