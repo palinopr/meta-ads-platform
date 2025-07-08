@@ -110,22 +110,49 @@ serve(async (req) => {
     console.log('Meta API raw response:', JSON.stringify(metaData, null, 2))
     console.log(`Fetched ${metaData.data?.length || 0} accounts from Meta API`)
     
+    // Check for common response patterns
+    if (metaData.data && metaData.data.length === 0) {
+      console.log('ZERO ACCOUNTS DETECTED - Possible reasons:')
+      console.log('1. User has no ad accounts in Meta Business Manager')
+      console.log('2. Token lacks proper permissions (ads_management, ads_read)')
+      console.log('3. User is not admin/advertiser on any business accounts')
+      console.log('4. Accounts are not properly linked to Business Manager')
+    }
+    
+    if (metaData.paging) {
+      console.log('Meta API paging info:', JSON.stringify(metaData.paging, null, 2))
+    }
+    
     // Transform the data to our format
-    const accounts = (metaData.data || []).map((account: any) => ({
-      account_id: account.id.replace('act_', ''), // Remove act_ prefix
-      account_name: account.name || 'Unnamed Account',
-      currency: account.currency || 'USD',
-      status: account.account_status === 1 ? 'ACTIVE' : 'INACTIVE',
-      is_active: account.account_status === 1
-    }))
+    const accounts = (metaData.data || []).map((account: any) => {
+      console.log('Processing individual account:', JSON.stringify(account, null, 2))
+      return {
+        account_id: account.id.replace('act_', ''), // Remove act_ prefix
+        account_name: account.name || 'Unnamed Account',
+        currency: account.currency || 'USD',
+        status: account.account_status === 1 ? 'ACTIVE' : 'INACTIVE',
+        is_active: account.account_status === 1
+      }
+    })
     
     console.log('Transformed accounts:', accounts)
+    
+    // Include diagnostic info in response
+    const diagnosticInfo = {
+      rawResponseSize: responseText.length,
+      hasData: !!metaData.data,
+      dataLength: metaData.data?.length || 0,
+      hasPaging: !!metaData.paging,
+      hasError: !!metaData.error
+    }
 
     return new Response(
       JSON.stringify({ 
         accounts: accounts,
         totalFetched: accounts.length,
-        fromApi: true
+        fromApi: true,
+        diagnostics: diagnosticInfo,
+        rawMetaResponse: metaData // Include raw response for debugging
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
