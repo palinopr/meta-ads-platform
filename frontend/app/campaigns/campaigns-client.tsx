@@ -446,6 +446,28 @@ export function CampaignsClient() {
             Test Debug
           </Button>
           <Button 
+            variant="destructive"
+            onClick={async () => {
+              try {
+                setError('Setting up database functions...')
+                const { data, error } = await supabase.functions.invoke('setup-database')
+                console.log('Setup result:', data)
+                if (error) {
+                  console.error('Setup error:', error)
+                  setError('Setup failed: ' + error.message)
+                } else {
+                  setError('✅ Database setup complete! Try syncing now.')
+                  setTimeout(() => setError(null), 3000)
+                }
+              } catch (e: any) {
+                console.error('Setup error:', e)
+                setError('Setup error: ' + e.message)
+              }
+            }}
+          >
+            Setup DB
+          </Button>
+          <Button 
             disabled={!selectedAccount}
             onClick={() => window.alert('Campaign creation modal coming soon!')}
           >
