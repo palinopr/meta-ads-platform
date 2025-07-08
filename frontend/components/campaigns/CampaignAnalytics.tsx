@@ -36,9 +36,13 @@ export function CampaignAnalytics({ accountId }: CampaignAnalyticsProps) {
   const loadCampaigns = async () => {
     try {
       setLoading(true)
-      const data = await metaApi.getCampaigns(accountId)
-      setCampaigns(data)
-      setFilteredCampaigns(data)
+      const response = await metaApi.getCampaigns(accountId)
+      if (response.error) {
+        console.error('Error loading campaigns:', response.error)
+        return
+      }
+      setCampaigns(response.data)
+      setFilteredCampaigns(response.data)
     } catch (error) {
       console.error('Error loading campaigns:', error)
     } finally {
