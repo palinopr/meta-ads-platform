@@ -53,12 +53,18 @@ export function CampaignsClient() {
     try {
       setLoading(true)
       setError(null)
-      const accounts = await api.getAdAccounts()
-      setAdAccounts(accounts)
+      const response = await api.getAdAccounts()
+      
+      if (response.error) {
+        setError(response.error)
+        return
+      }
+      
+      setAdAccounts(response.data)
       
       // If only one account, auto-select it
-      if (accounts.length === 1) {
-        setSelectedAccount(accounts[0].account_id)
+      if (response.data.length === 1) {
+        setSelectedAccount(response.data[0].account_id)
       }
     } catch (error: any) {
       console.error('Failed to load ad accounts:', error)
@@ -112,7 +118,11 @@ export function CampaignsClient() {
       // Load campaigns using safe API first
       let campaignData: Campaign[] = []
       try {
-        campaignData = await apiSafe.getCampaigns(selectedAccount)
+        const response = await apiSafe.getCampaigns(selectedAccount)
+        if (response.error) {
+          throw new Error(response.error)
+        }
+        campaignData = response.data
         setCampaigns(campaignData)
         console.log('Campaigns loaded via safe API:', campaignData.length)
       } catch (e) {
@@ -124,7 +134,11 @@ export function CampaignsClient() {
         } catch (e2) {
           // Final fallback to original API
           console.error('Fixed API failed, trying original:', e2)
-          campaignData = await api.getCampaigns(selectedAccount)
+          const response = await api.getCampaigns(selectedAccount)
+          if (response.error) {
+            throw new Error(response.error)
+          }
+          campaignData = response.data
           setCampaigns(campaignData)
         }
       }
@@ -165,7 +179,11 @@ export function CampaignsClient() {
       // Then load the campaigns
       let campaignData: Campaign[] = []
       try {
-        campaignData = await apiSafe.getCampaigns(selectedAccount)
+        const response = await apiSafe.getCampaigns(selectedAccount)
+        if (response.error) {
+          throw new Error(response.error)
+        }
+        campaignData = response.data
         setCampaigns(campaignData)
         console.log('Campaigns loaded via safe API:', campaignData.length)
       } catch (e) {
@@ -177,7 +195,11 @@ export function CampaignsClient() {
         } catch (e2) {
           // Final fallback to original API
           console.error('Fixed API failed, trying original:', e2)
-          campaignData = await api.getCampaigns(selectedAccount)
+          const response = await api.getCampaigns(selectedAccount)
+          if (response.error) {
+            throw new Error(response.error)
+          }
+          campaignData = response.data
           setCampaigns(campaignData)
         }
       }
@@ -199,7 +221,11 @@ export function CampaignsClient() {
     try {
       setLoadingCampaigns(true)
       setError(null)
-      const data = await api.getCampaigns(selectedAccount)
+      const response = await api.getCampaigns(selectedAccount)
+      if (response.error) {
+        throw new Error(response.error)
+      }
+      const data = response.data
       setCampaigns(data)
     } catch (error: any) {
       console.error('Failed to load campaigns:', error)
