@@ -66,7 +66,7 @@ export class MetaAPI {
 
   async getCampaigns(accountId: string): Promise<MetaAPIResponse<Campaign[]>> {
     try {
-      const { data, error } = await this.supabaseClient.functions.invoke('sync-campaigns-final', {
+      const { data, error } = await this.supabaseClient.functions.invoke('get-campaigns-direct', {
         body: { account_id: accountId }
       });
 
@@ -74,8 +74,7 @@ export class MetaAPI {
         return { data: [], error: error.message };
       }
 
-      // Handle both old and new response formats
-      const campaigns = data.campaigns || data.data || [];
+      const campaigns = data.campaigns || [];
       return { data: campaigns, success: true };
     } catch (error: any) {
       return { data: [], error: error.message };
@@ -84,7 +83,7 @@ export class MetaAPI {
 
   async syncAccount(accountId: string): Promise<MetaAPIResponse<any>> {
     try {
-      const { data, error } = await this.supabaseClient.functions.invoke('sync-campaigns-final', {
+      const { data, error } = await this.supabaseClient.functions.invoke('sync-campaigns-direct', {
         body: { account_id: accountId }
       });
 
