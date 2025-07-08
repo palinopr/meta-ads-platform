@@ -348,7 +348,7 @@ export function CampaignsClient() {
       ) : (
         <div className="grid gap-4">
           {campaigns.map((campaign) => (
-            <Card key={campaign.id}>
+            <Card key={campaign.campaign_id}>
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
@@ -396,7 +396,7 @@ export function CampaignsClient() {
                   <Button 
                     variant="outline" 
                     size="sm"
-                    onClick={() => handlePauseCampaign(campaign.id)}
+                    onClick={() => handlePauseCampaign(campaign.campaign_id)}
                   >
                     {campaign.status === 'ACTIVE' ? (
                       <>
@@ -413,7 +413,7 @@ export function CampaignsClient() {
                   <Button 
                     variant="default" 
                     size="sm"
-                    onClick={() => router.push(`/campaigns/${campaign.id}`)}
+                    onClick={() => router.push(`/campaigns/${campaign.campaign_id}`)}
                   >
                     View Details
                   </Button>
