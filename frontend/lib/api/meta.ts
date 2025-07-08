@@ -115,4 +115,20 @@ export class MetaAPI {
       return { data: [], error: error.message };
     }
   }
+
+  async createCampaign(campaignData: any): Promise<MetaAPIResponse<any>> {
+    try {
+      const { data, error } = await this.supabaseClient.functions.invoke('create-campaign', {
+        body: campaignData
+      });
+
+      if (error) {
+        return { data: null, error: error.message };
+      }
+
+      return { data: data || null, success: true };
+    } catch (error: any) {
+      return { data: null, error: error.message };
+    }
+  }
 }

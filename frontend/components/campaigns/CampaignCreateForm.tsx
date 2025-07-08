@@ -124,6 +124,11 @@ export function CampaignCreateForm({ accountId, onSuccess, onCancel }: CampaignC
       const result = await api.createCampaign(campaignData)
       console.log('Campaign created:', result)
       
+      if (result.error) {
+        setError(result.error)
+        return
+      }
+      
       // Success feedback
       if (onSuccess) {
         onSuccess()
