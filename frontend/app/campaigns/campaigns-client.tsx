@@ -426,6 +426,26 @@ export function CampaignsClient() {
             Sync from Meta
           </Button>
           <Button 
+            variant="outline"
+            onClick={async () => {
+              if (!selectedAccount) return
+              try {
+                const { data, error } = await supabase.functions.invoke('test-campaign-sync', {
+                  body: { account_id: selectedAccount }
+                })
+                console.log('Test sync result:', data)
+                if (error) console.error('Test sync error:', error)
+                alert(JSON.stringify(data || error, null, 2))
+              } catch (e: any) {
+                console.error('Test error:', e)
+                alert('Test error: ' + e.message)
+              }
+            }}
+            disabled={!selectedAccount}
+          >
+            Test Debug
+          </Button>
+          <Button 
             disabled={!selectedAccount}
             onClick={() => window.alert('Campaign creation modal coming soon!')}
           >
