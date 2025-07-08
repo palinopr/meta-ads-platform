@@ -70,7 +70,7 @@ serve(withSentryMonitoring('meta-accounts-v2', async (req) => {
     })
 
     if (!accessToken) {
-      console.log('No Meta access token found')
+      console.log('No Meta access token found for user:', user.id)
       captureBusinessError(new Error('No Meta access token found'), {
         functionName: 'meta-accounts-v2',
         businessImpact: 'high',
@@ -87,6 +87,10 @@ serve(withSentryMonitoring('meta-accounts-v2', async (req) => {
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
+
+    console.log('Meta access token found, length:', accessToken.length)
+    console.log('Token starts with:', accessToken.substring(0, 20) + '...')
+    console.log('User ID:', user.id)
 
     console.log('Fetching accounts from Meta API with rate limiting...')
     
@@ -185,16 +189,27 @@ serve(withSentryMonitoring('meta-accounts-v2', async (req) => {
     }
 
     const metaData = JSON.parse(responseText)
+    console.log('Meta API raw response:', JSON.stringify(metaData, null, 2))
     console.log(`Fetched ${metaData.data?.length || 0} accounts from Meta API`)
     
+    // Check if there's a paging object or any other relevant data
+    if (metaData.paging) {
+      console.log('Meta API paging info:', metaData.paging)
+    }
+    
     // Transform the data to our format
-    const accounts = (metaData.data || []).map((account: any) => ({
-      account_id: account.id.replace('act_', ''), // Remove act_ prefix
-      account_name: account.name || 'Unnamed Account',
-      currency: account.currency || 'USD',
-      status: account.account_status === 1 ? 'ACTIVE' : 'INACTIVE',
-      is_active: account.account_status === 1
-    }))
+    const accounts = (metaData.data || []).map((account: any) => {
+      console.log('Processing account:', account)
+      return {
+        account_id: account.id.replace('act_', ''), // Remove act_ prefix
+        account_name: account.name || 'Unnamed Account',
+        currency: account.currency || 'USD',
+        status: account.account_status === 1 ? 'ACTIVE' : 'INACTIVE',
+        is_active: account.account_status === 1
+      }
+    })
+    
+    console.log('Transformed accounts:', accounts)
 
     // Update tracking variables for performance monitoring
     accountCount = accounts.length
