@@ -67,4 +67,20 @@ export class MetaAPI {
       return { data: [], error: error.message };
     }
   }
+
+  async syncAccount(accountId: string): Promise<MetaAPIResponse<any>> {
+    try {
+      const { data, error } = await this.supabaseClient.functions.invoke('sync-campaigns-v2', {
+        body: { account_id: accountId }
+      });
+
+      if (error) {
+        return { data: {}, error: error.message };
+      }
+
+      return { data: data || {}, success: true };
+    } catch (error: any) {
+      return { data: {}, error: error.message };
+    }
+  }
 }
