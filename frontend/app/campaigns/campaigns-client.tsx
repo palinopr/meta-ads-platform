@@ -33,9 +33,11 @@ export function CampaignsClient() {
   const [adAccounts, setAdAccounts] = useState<MetaAdAccount[]>([])
   const [selectedAccount, setSelectedAccount] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const api = new MetaAPI()
+  
+  const supabase = createClient()
+  const api = new MetaAPI(supabase)
   const apiFixed = new MetaAPIFixed()
-  const apiSafe = new MetaAPISafe()
+  const apiSafe = new MetaAPISafe(supabase)
 
   useEffect(() => {
     loadAdAccounts()
