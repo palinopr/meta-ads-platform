@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { getDecryptedMetaToken } from '../_shared/token-encryption.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -70,16 +71,19 @@ serve(async (req) => {
       )
     }
 
+    // Get decrypted Meta access token
+    const accessToken = await getDecryptedMetaToken(supabaseAdmin, user.id)
+    
     // Check if we have a Meta token
-    const hasMetaConnection = !!(profile.meta_access_token && profile.meta_user_id)
+    const hasMetaConnection = !!(accessToken && profile.meta_user_id)
 
     // If connected, optionally verify the token is still valid
     let isValid = hasMetaConnection
-    if (hasMetaConnection) {
+    if (hasMetaConnection && accessToken) {
       try {
         // Make a simple API call to verify the token
         const response = await fetch(
-          `https://graph.facebook.com/v19.0/me?access_token=${profile.meta_access_token}`,
+          `https://graph.facebook.com/v19.0/me?access_token=${accessToken}`,
           { method: 'GET' }
         )
         
@@ -105,7 +109,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         connected: hasMetaConnection && isValid,
-        hasToken: !!profile.meta_access_token,
+        hasToken: !!accessToken,
         hasUserId: !!profile.meta_user_id,
         isValid
       }),
