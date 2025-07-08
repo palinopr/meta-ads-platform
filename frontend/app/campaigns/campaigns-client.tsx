@@ -53,13 +53,18 @@ export function CampaignsClient() {
     try {
       setLoading(true)
       setError(null)
+      console.log('Loading ad accounts...')
       const response = await api.getAdAccounts()
       
+      console.log('Ad accounts response:', response)
+      
       if (response.error) {
+        console.error('Ad accounts error:', response.error)
         setError(response.error)
         return
       }
       
+      console.log(`Loaded ${response.data.length} ad accounts`)
       setAdAccounts(response.data)
       
       // If only one account, auto-select it
@@ -308,13 +313,25 @@ export function CampaignsClient() {
       {adAccounts.length === 0 ? (
         <Card>
           <CardContent className="text-center py-10">
-            <h3 className="text-lg font-semibold mb-2">No ad accounts found</h3>
-            <p className="text-muted-foreground mb-4">
-              Your Meta account doesn't have any ad accounts or the connection has expired.
-            </p>
-            <Button onClick={() => window.location.href = '/settings'}>
-              Reconnect Meta Account
-            </Button>
+            <AlertCircle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">No Meta Ad Accounts Found</h3>
+            <div className="text-muted-foreground mb-6 space-y-2">
+              <p>This could happen for several reasons:</p>
+              <ul className="text-sm text-left max-w-md mx-auto space-y-1">
+                <li>• Your Meta account connection has expired</li>
+                <li>• You don't have any ad accounts in your Meta Business account</li>
+                <li>• You don't have proper permissions (ads_management, ads_read)</li>
+                <li>• Your Meta account isn't linked to a Business Manager</li>
+              </ul>
+            </div>
+            <div className="space-y-3">
+              <Button onClick={() => window.location.href = '/settings'}>
+                Check Meta Connection in Settings
+              </Button>
+              <div className="text-xs text-muted-foreground">
+                Need help? Make sure you have admin access to Meta Business accounts with active ad accounts.
+              </div>
+            </div>
           </CardContent>
         </Card>
       ) : !selectedAccount ? (
