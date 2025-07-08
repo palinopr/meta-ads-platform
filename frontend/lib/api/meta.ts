@@ -187,4 +187,40 @@ export class MetaAPI {
       roas: metric.roas
     }))
   }
+
+  async createCampaign(campaignData: {
+    accountId: string
+    name: string
+    objective: string
+    budgetType: 'daily' | 'lifetime'
+    budget: number
+    status: string
+  }): Promise<Campaign> {
+    try {
+      console.log('Creating campaign with data:', campaignData)
+      
+      const { data, error } = await this.supabase.functions.invoke('create-campaign', {
+        body: campaignData
+      })
+      
+      if (error) {
+        console.error('Error creating campaign:', error)
+        throw error
+      }
+      
+      if (data?.error) {
+        console.error('Create campaign API returned error:', data.error)
+        if (data.tokenExpired) {
+          throw new Error('Token expired. Please reconnect your Meta account.')
+        }
+        throw new Error(data.error)
+      }
+      
+      console.log('Campaign created successfully:', data)
+      return data.campaign
+    } catch (error) {
+      console.error('Error in createCampaign:', error)
+      throw error
+    }
+  }
 }
