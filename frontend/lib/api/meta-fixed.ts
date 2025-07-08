@@ -16,6 +16,7 @@ export interface Campaign {
   id: string
   ad_account_id: string
   campaign_id: string
+  account_id: string
   name: string
   status: string
   objective: string
@@ -79,7 +80,10 @@ export class MetaAPIFixed {
         })
 
       if (!rpcError && rpcData) {
-        return rpcData
+        return rpcData.map((campaign: any) => ({
+          ...campaign,
+          account_id: accountId
+        }))
       }
 
       // If RPC fails, try the safer wrapper function
@@ -110,7 +114,11 @@ export class MetaAPIFixed {
         return []
       }
 
-      return data || []
+      // Map the data to include account_id field
+      return (data || []).map(campaign => ({
+        ...campaign,
+        account_id: accountId
+      }))
     } catch (error) {
       console.error('Unexpected error in getCampaigns:', error)
       return []
