@@ -9,7 +9,7 @@
  */
 
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { captureUserError } from '../sentry.client.config';
+// import { captureUserError } from '../sentry.client.config'; // Removed Sentry
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
@@ -52,20 +52,8 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       errorInfo,
     });
 
-    // Capture error in Sentry with business context
-    captureUserError(error, {
-      page: this.props.page,
-      action: 'component_error',
-      businessImpact: 'high',
-      additionalContext: {
-        feature: this.props.feature,
-        componentStack: errorInfo.componentStack,
-        errorBoundary: true,
-        errorInfo: {
-          componentStack: errorInfo.componentStack,
-        },
-      },
-    });
+    // Error logging removed (Sentry was removed)
+    console.error('Error caught by boundary:', error, errorInfo);
 
     // Call optional onError callback
     if (this.props.onError) {

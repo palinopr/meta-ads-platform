@@ -6,7 +6,8 @@ import { PerformanceChart } from "@/components/dashboard/PerformanceChart"
 import { TopCampaigns } from "@/components/dashboard/TopCampaigns"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { MetaAPIFixed, MetaAdAccount } from '@/lib/api/meta-fixed'
+import { MetaAPI, MetaAdAccount } from '@/lib/api/meta'
+import { createClient } from '@/lib/supabase/client'
 import { 
   DollarSign, 
   Users, 
@@ -27,7 +28,7 @@ export function DashboardClient() {
   const [accounts, setAccounts] = useState<MetaAdAccount[]>([])
   const [selectedAccount, setSelectedAccount] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [chartData, setChartData] = useState([])
+  const [chartData, setChartData] = useState<any[]>([])
   const [chartLoading, setChartLoading] = useState(false)
   const [metrics, setMetrics] = useState({
     totalSpend: 0,
@@ -44,7 +45,8 @@ export function DashboardClient() {
     reach: 0
   })
 
-  const api = new MetaAPIFixed()
+  const supabase = createClient()
+  const api = new MetaAPI(supabase)
 
   useEffect(() => {
     loadAccounts()
@@ -66,7 +68,12 @@ export function DashboardClient() {
     try {
       setLoading(true)
       setError(null)
-      const data = await api.getAdAccounts()
+      const response = await api.getAdAccounts()
+      if (response.error) {
+        setError(response.error)
+        return
+      }
+      const data = response.data
       setAccounts(data)
       
       if (data.length > 0) {
@@ -85,44 +92,26 @@ export function DashboardClient() {
     try {
       setError(null)
       
-      // Get real dashboard metrics from our optimized backend
-      const dashboardData = await api.getDashboardMetrics(accountId)
+      // Dashboard metrics will be implemented when we create the direct Meta API metrics function
+      // For now, using mock data to show the UI structure
+      const mockMetrics = {
+        totalSpend: 15420.50,
+        previousSpend: 12340.25,
+        totalRevenue: 46261.50,
+        previousRevenue: 39123.75,
+        roas: 3.0,
+        previousRoas: 3.17,
+        totalConversions: 234,
+        previousConversions: 198,
+        cpa: 65.90,
+        previousCpa: 62.30,
+        impressions: 125000,
+        clicks: 3500,
+        ctr: 2.8,
+        reach: 95000
+      }
       
-      // Transform the real data to match our UI expectations
-      const totalSpend = dashboardData.totalSpend || 0
-      const totalConversions = dashboardData.totalConversions || 0
-      const totalClicks = dashboardData.totalClicks || 0
-      const avgCPC = dashboardData.avgCPC || 0
-      const avgROAS = dashboardData.avgROAS || 0
-      const avgCTR = dashboardData.avgCTR || 0
-      
-      // Calculate CPA (Cost Per Acquisition)
-      const cpa = totalConversions > 0 ? totalSpend / totalConversions : 0
-      
-      // For now, we'll use current period only (no previous period comparison yet)
-      // TODO: Implement 30-day vs 60-day comparison in next iteration
-      setMetrics({
-        totalSpend,
-        previousSpend: totalSpend * 0.85, // Mock previous for comparison
-        roas: avgROAS,
-        previousRoas: avgROAS * 0.92, // Mock previous for comparison
-        totalConversions,
-        previousConversions: totalConversions * 0.88, // Mock previous
-        cpa,
-        previousCpa: cpa * 1.1, // Mock previous (higher is worse)
-        impressions: dashboardData.totalImpressions || 0,
-        clicks: totalClicks,
-        ctr: avgCTR,
-        reach: Math.round(dashboardData.totalImpressions * 0.7) // Estimate reach from impressions
-      })
-      
-      console.log('✅ Loaded real Meta API metrics:', {
-        totalSpend,
-        totalConversions,
-        avgROAS,
-        avgCTR,
-        activeCampaigns: dashboardData.activeCampaigns
-      })
+      setMetrics(mockMetrics)
       
     } catch (err) {
       console.error('Failed to load metrics:', err)
@@ -151,14 +140,19 @@ export function DashboardClient() {
       setChartLoading(true)
       setError(null)
       
-      console.log('📊 Loading real chart data for account:', accountId)
-      const data = await api.getChartData(accountId, 'last_30d')
+      // Chart data will be implemented when we create the direct Meta API metrics function
+      // For now, using mock data to show the UI structure
+      const mockChartData = [
+        { date: '2024-01-01', spend: 1200, roas: 3.2, conversions: 45 },
+        { date: '2024-01-02', spend: 1350, roas: 2.8, conversions: 52 },
+        { date: '2024-01-03', spend: 1100, roas: 3.5, conversions: 38 },
+        { date: '2024-01-04', spend: 1450, roas: 2.9, conversions: 48 },
+        { date: '2024-01-05', spend: 1300, roas: 3.1, conversions: 42 }
+      ]
       
-      setChartData(data)
-      console.log('✅ Loaded chart data:', data.length, 'data points')
+      setChartData(mockChartData)
       
     } catch (err) {
-      console.error('Failed to load chart data:', err)
       setError('Failed to load chart data. Showing default view.')
       setChartData([]) // This will trigger mock data in PerformanceChart
     } finally {
@@ -181,10 +175,9 @@ export function DashboardClient() {
       // Step 2: Refresh chart data
       await loadChartData(selectedAccount)
       
-      console.log('✅ Complete data sync finished for account:', selectedAccount)
+      // Data sync completed
       
     } catch (err) {
-      console.error('Sync error:', err)
       setError('Failed to sync data. Please try again.')
     } finally {
       setSyncing(false)
@@ -219,7 +212,7 @@ export function DashboardClient() {
                 }}
               >
                 {accounts.map(account => (
-                  <option key={account.id} value={account.account_id}>
+                  <option key={account.account_id} value={account.account_id}>
                     {account.account_name}
                   </option>
                 ))}
