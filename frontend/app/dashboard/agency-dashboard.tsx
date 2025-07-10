@@ -9,6 +9,8 @@ import {
   inviteEmployee
 } from '@/lib/supabase/agency'
 import type { AgencyContext, Database } from '@/lib/supabase/database.types'
+import { ClientContextSwitcher } from '@/components/navigation/ClientContextSwitcher'
+import { BreadcrumbNavigation } from '@/components/navigation/BreadcrumbNavigation'
 
 // Define the types based on the actual database schema
 type AgencyEmployee = Database['public']['Tables']['employees']['Row'] & {
@@ -271,14 +273,35 @@ export function AgencyDashboard() {
 
   return (
     <div className="flex-1 space-y-6 p-8 pt-6">
+      {/* Breadcrumb Navigation */}
+      <BreadcrumbNavigation 
+        items={[
+          { label: 'Agency Dashboard', href: '/dashboard' }
+        ]}
+      />
+
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">{agencyContext.agency.name}</h2>
-          <p className="text-muted-foreground">
+          <h2 className="text-3xl font-bold tracking-tight text-white">{agencyContext.agency.name}</h2>
+          <p className="text-gray-300">
             {agencyContext.employee.role} • {agencyContext.agency.subscription_tier} plan
           </p>
         </div>
+        
+        <div className="lg:w-80">
+          <ClientContextSwitcher 
+            clients={[]}
+            selectedClient={undefined}
+            onClientSelect={() => {}}
+          />
+        </div>
+      </div>
+
+      <div className="flex items-center justify-end space-x-2">
+      </div>
+
+      <div className="flex items-center justify-end space-x-2">
         <div className="flex items-center space-x-2">
           <Badge variant="outline" className="capitalize">
             {agencyContext.agency.status}
@@ -353,51 +376,51 @@ export function AgencyDashboard() {
         </Alert>
       )}
 
-      {/* Enhanced Key Metrics */}
+      {/* Enhanced Key Metrics with Agency Theme */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-        <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+        <Card className="bg-gradient-to-r from-agency-primary-500 to-agency-primary-600 text-white border-agency-primary-400 shadow-lg hover:shadow-xl transition-shadow animate-fade-in">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-blue-50">Team Members</CardTitle>
-            <Users className="h-4 w-4 text-blue-200" />
+            <CardTitle className="text-sm font-medium text-agency-primary-50">Team Members</CardTitle>
+            <Users className="h-4 w-4 text-agency-primary-200" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{employees.length}</div>
-            <p className="text-xs text-blue-100">
+            <p className="text-xs text-agency-primary-100">
               {employees.filter(e => e.status === 'active').length} active
             </p>
           </CardContent>
         </Card>
         
-        <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white">
+        <Card className="bg-gradient-to-r from-agency-success-500 to-agency-success-600 text-white border-agency-success-400 shadow-lg hover:shadow-xl transition-shadow animate-fade-in">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-green-50">Client Accounts</CardTitle>
-            <Building2 className="h-4 w-4 text-green-200" />
+            <CardTitle className="text-sm font-medium text-agency-success-50">Client Accounts</CardTitle>
+            <Building2 className="h-4 w-4 text-agency-success-200" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{clients.length}</div>
-            <p className="text-xs text-green-100">
+            <p className="text-xs text-agency-success-100">
               {clients.filter(c => c.status === 'active').length} active
             </p>
           </CardContent>
         </Card>
         
-        <Card className="bg-gradient-to-r from-purple-500 to-purple-600 text-white">
+        <Card className="bg-gradient-to-r from-agency-secondary-600 to-agency-secondary-700 text-white border-agency-secondary-500 shadow-lg hover:shadow-xl transition-shadow animate-fade-in">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-purple-50">Monthly Spend</CardTitle>
-            <DollarSign className="h-4 w-4 text-purple-200" />
+            <CardTitle className="text-sm font-medium text-agency-secondary-50">Monthly Spend</CardTitle>
+            <DollarSign className="h-4 w-4 text-agency-secondary-200" />
           </CardHeader>
           <CardContent>
             {metricsLoading ? (
               <div className="space-y-2">
-                <div className="h-8 bg-purple-400 rounded animate-pulse"></div>
-                <div className="h-3 bg-purple-400 rounded animate-pulse w-20"></div>
+                <div className="h-8 bg-agency-secondary-400 rounded animate-pulse"></div>
+                <div className="h-3 bg-agency-secondary-400 rounded animate-pulse w-20"></div>
               </div>
             ) : (
               <>
                 <div className="text-2xl font-bold">
                   {agencyMetrics ? formatCurrency(agencyMetrics.totalSpend) : '£0'}
                 </div>
-                <p className="text-xs text-purple-100 flex items-center">
+                <p className="text-xs text-agency-secondary-100 flex items-center">
                   {agencyMetrics?.performanceChange.spend ? (
                     <>
                       {agencyMetrics.performanceChange.spend >= 0 ? (
@@ -416,23 +439,23 @@ export function AgencyDashboard() {
           </CardContent>
         </Card>
         
-        <Card className="bg-gradient-to-r from-orange-500 to-orange-600 text-white">
+        <Card className="bg-gradient-to-r from-agency-warning-500 to-agency-warning-600 text-white border-agency-warning-400 shadow-lg hover:shadow-xl transition-shadow animate-fade-in">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-orange-50">Avg. ROAS</CardTitle>
-            <TrendingUp className="h-4 w-4 text-orange-200" />
+            <CardTitle className="text-sm font-medium text-agency-warning-50">Avg. ROAS</CardTitle>
+            <TrendingUp className="h-4 w-4 text-agency-warning-200" />
           </CardHeader>
           <CardContent>
             {metricsLoading ? (
               <div className="space-y-2">
-                <div className="h-8 bg-orange-400 rounded animate-pulse"></div>
-                <div className="h-3 bg-orange-400 rounded animate-pulse w-16"></div>
+                <div className="h-8 bg-agency-warning-400 rounded animate-pulse"></div>
+                <div className="h-3 bg-agency-warning-400 rounded animate-pulse w-16"></div>
               </div>
             ) : (
               <>
                 <div className="text-2xl font-bold">
                   {agencyMetrics ? `${agencyMetrics.averageRoas.toFixed(1)}x` : '0x'}
                 </div>
-                <p className="text-xs text-orange-100 flex items-center">
+                <p className="text-xs text-agency-warning-100 flex items-center">
                   {agencyMetrics?.performanceChange.roas ? (
                     <>
                       {agencyMetrics.performanceChange.roas >= 0 ? (
@@ -451,23 +474,23 @@ export function AgencyDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-r from-teal-500 to-teal-600 text-white">
+        <Card className="bg-gradient-to-r from-meta-blue to-meta-green text-white border-meta-blue/40 shadow-lg hover:shadow-xl transition-shadow animate-fade-in">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-teal-50">Active Campaigns</CardTitle>
-            <BarChart3 className="h-4 w-4 text-teal-200" />
+            <CardTitle className="text-sm font-medium text-blue-50">Active Campaigns</CardTitle>
+            <BarChart3 className="h-4 w-4 text-blue-200" />
           </CardHeader>
           <CardContent>
             {metricsLoading ? (
               <div className="space-y-2">
-                <div className="h-8 bg-teal-400 rounded animate-pulse"></div>
-                <div className="h-3 bg-teal-400 rounded animate-pulse w-24"></div>
+                <div className="h-8 bg-blue-400 rounded animate-pulse"></div>
+                <div className="h-3 bg-blue-400 rounded animate-pulse w-24"></div>
               </div>
             ) : (
               <>
                 <div className="text-2xl font-bold">
                   {agencyMetrics ? agencyMetrics.activeCampaigns : 0}
                 </div>
-                <p className="text-xs text-teal-100">
+                <p className="text-xs text-blue-100">
                   Across {clients.filter(c => c.status === 'active').length} clients
                 </p>
               </>

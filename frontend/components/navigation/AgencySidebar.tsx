@@ -196,7 +196,7 @@ export function AgencySidebar({ className }: AgencySidebarProps) {
   return (
     <>
       {/* Mobile toggle button */}
-      <div className="lg:hidden">
+      <div className="md:hidden">
         <Button
           variant="ghost"
           size="sm"
@@ -209,7 +209,7 @@ export function AgencySidebar({ className }: AgencySidebarProps) {
 
       {/* Mobile sidebar */}
       {isMobileOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
+        <div className="fixed inset-0 z-50 md:hidden">
           <div className="fixed inset-0 bg-black/50" onClick={() => setIsMobileOpen(false)} />
           <div className="fixed left-0 top-0 bottom-0 w-80 bg-agency-secondary-900 shadow-2xl animate-slide-in">
             <div className="flex items-center justify-between p-4 border-b border-agency-secondary-700">
@@ -229,7 +229,7 @@ export function AgencySidebar({ className }: AgencySidebarProps) {
 
       {/* Desktop sidebar */}
       <div className={cn(
-        'hidden lg:flex lg:flex-col lg:w-80 lg:fixed lg:inset-y-0 bg-agency-secondary-900 border-r border-agency-secondary-700',
+        'flex flex-col w-full h-full bg-agency-secondary-900 border-r border-agency-secondary-700',
         className
       )}>
         <div className="flex items-center px-6 py-6 border-b border-agency-secondary-700">
