@@ -18,16 +18,13 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
-      {/* AgencySidebar */}
-      <div className="hidden md:flex md:w-64 md:flex-col">
-        <AgencySidebar />
-      </div>
-
-      {/* Main content */}
-      <div className="flex flex-col flex-1 overflow-hidden">
-        <main className="flex-1 relative overflow-y-auto focus:outline-none bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
-          {children}
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800">
+      <AgencySidebar />
+      <div className="lg:pl-64">
+        <main className="py-8 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-7xl mx-auto">
+            {children}
+          </div>
         </main>
       </div>
     </div>

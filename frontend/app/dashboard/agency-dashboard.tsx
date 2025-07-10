@@ -50,6 +50,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Progress } from "@/components/ui/progress"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { 
   Users, 
   Building2, 
@@ -73,8 +74,13 @@ import {
   Activity,
   Plus,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
+  LineChartIcon,
+  PieChartIcon
 } from "lucide-react"
+import { InteractiveChart } from '@/components/dashboard/InteractiveChart'
+import { PerformanceComparison } from '@/components/dashboard/PerformanceComparison'
+import { MetricBreakdowns } from '@/components/dashboard/MetricBreakdowns'
 
 export function AgencyDashboard() {
   const [loading, setLoading] = useState(true)
@@ -89,8 +95,21 @@ export function AgencyDashboard() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [showInviteDialog, setShowInviteDialog] = useState(false)
+  const [dateRange, setDateRange] = useState('30d')
+  const [chartData, setChartData] = useState<any[]>([])
+  const [comparisonData, setComparisonData] = useState<any>(null)
+  const [breakdownData, setBreakdownData] = useState<any>(null)
 
   const supabase = createClient()
+
+  const handleDateRangeChange = (range: string) => {
+    setDateRange(range)
+    // In real implementation, this would trigger data refresh
+    console.log('Date range changed to:', range)
+    if (agencyContext) {
+      loadChartData(agencyContext.agency.id)
+    }
+  }
 
   useEffect(() => {
     loadAgencyData()
@@ -119,6 +138,9 @@ export function AgencyDashboard() {
 
       // Load agency metrics in background
       loadAgencyMetrics(agencyContext.agency.id)
+
+      // Load chart data
+      loadChartData(agencyContext.agency.id)
 
     } catch (err) {
       setError('Failed to load agency data')
@@ -173,6 +195,80 @@ export function AgencyDashboard() {
   const formatPercentage = (value: number) => {
     const sign = value >= 0 ? '+' : ''
     return `${sign}${value.toFixed(1)}%`
+  }
+
+  const loadChartData = (agencyId: string) => {
+    // Mock chart data - in real implementation, this would come from Meta API
+    const mockChartData = [
+      { date: '2025-01-01', spend: 1250, roas: 4.2, clicks: 850, impressions: 45000, ctr: 1.89, cpc: 1.47 },
+      { date: '2025-01-02', spend: 1180, roas: 3.8, clicks: 720, impressions: 42000, ctr: 1.71, cpc: 1.64 },
+      { date: '2025-01-03', spend: 1420, roas: 4.6, clicks: 920, impressions: 48000, ctr: 1.92, cpc: 1.54 },
+      { date: '2025-01-04', spend: 1350, roas: 4.1, clicks: 880, impressions: 46000, ctr: 1.91, cpc: 1.53 },
+      { date: '2025-01-05', spend: 1520, roas: 4.8, clicks: 1050, impressions: 52000, ctr: 2.02, cpc: 1.45 },
+      { date: '2025-01-06', spend: 1680, roas: 5.2, clicks: 1180, impressions: 58000, ctr: 2.03, cpc: 1.42 },
+      { date: '2025-01-07', spend: 1450, roas: 4.4, clicks: 950, impressions: 49000, ctr: 1.94, cpc: 1.53 }
+    ]
+
+    const mockComparisonData = [
+      {
+        date: '2025-01-01',
+        current: { spend: 1250, roas: 4.2, clicks: 850, impressions: 45000, ctr: 1.89 },
+        previous: { spend: 1100, roas: 3.8, clicks: 780, impressions: 42000, ctr: 1.86 }
+      },
+      {
+        date: '2025-01-02',
+        current: { spend: 1180, roas: 3.8, clicks: 720, impressions: 42000, ctr: 1.71 },
+        previous: { spend: 1050, roas: 3.5, clicks: 680, impressions: 40000, ctr: 1.70 }
+      },
+      {
+        date: '2025-01-03',
+        current: { spend: 1420, roas: 4.6, clicks: 920, impressions: 48000, ctr: 1.92 },
+        previous: { spend: 1200, roas: 4.1, clicks: 850, impressions: 45000, ctr: 1.89 }
+      }
+    ]
+
+    const mockBreakdownData = {
+      demographics: {
+        age: [
+          { range: '18-24', spend: 2500, roas: 2.8, percentage: 15 },
+          { range: '25-34', spend: 4200, roas: 3.5, percentage: 35 },
+          { range: '35-44', spend: 3800, roas: 3.2, percentage: 28 },
+          { range: '45-54', spend: 1800, roas: 2.9, percentage: 15 },
+          { range: '55+', spend: 900, roas: 2.4, percentage: 7 }
+        ],
+        gender: [
+          { type: 'Female', spend: 7200, roas: 3.4, percentage: 58 },
+          { type: 'Male', spend: 5200, roas: 2.9, percentage: 42 }
+        ]
+      },
+      devices: [
+        { type: 'Mobile', spend: 8500, clicks: 3200, impressions: 95000, roas: 3.4, percentage: 68 },
+        { type: 'Desktop', spend: 3200, clicks: 980, impressions: 28000, roas: 2.8, percentage: 26 },
+        { type: 'Tablet', spend: 800, clicks: 220, impressions: 8500, roas: 2.2, percentage: 6 }
+      ],
+      placements: [
+        { name: 'Facebook Feed', spend: 5500, ctr: 3.2, cpc: 1.85, percentage: 44 },
+        { name: 'Instagram Feed', spend: 3200, ctr: 2.8, cpc: 2.10, percentage: 26 },
+        { name: 'Stories', spend: 2100, ctr: 4.1, cpc: 1.65, percentage: 17 },
+        { name: 'Reels', spend: 1600, ctr: 3.8, cpc: 1.75, percentage: 13 }
+      ],
+      geography: [
+        { country: 'United Kingdom', spend: 6500, roas: 3.5, clicks: 2400, percentage: 52 },
+        { country: 'United States', spend: 3200, roas: 2.9, clicks: 1200, percentage: 26 },
+        { country: 'Canada', spend: 1500, roas: 3.1, clicks: 580, percentage: 12 },
+        { country: 'Australia', spend: 1200, roas: 2.7, clicks: 420, percentage: 10 }
+      ],
+      timeOfDay: [
+        { hour: '00-06', spend: 400, clicks: 120, roas: 2.1 },
+        { hour: '06-12', spend: 2800, clicks: 950, roas: 3.2 },
+        { hour: '12-18', spend: 4200, clicks: 1580, roas: 3.6 },
+        { hour: '18-24', spend: 5100, clicks: 1750, roas: 3.4 }
+      ]
+    }
+
+    setChartData(mockChartData)
+    setComparisonData(mockComparisonData)
+    setBreakdownData(mockBreakdownData)
   }
 
   const handleInviteEmployee = async () => {
@@ -696,6 +792,35 @@ export function AgencyDashboard() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Interactive Analytics Charts */}
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-2xl font-bold tracking-tight text-white">Analytics Dashboard</h3>
+            <p className="text-gray-300">Interactive performance insights across all client campaigns</p>
+          </div>
+        </div>
+
+        {/* Interactive Chart */}
+        <InteractiveChart 
+          data={chartData} 
+          loading={metricsLoading} 
+          onDateRangeChange={handleDateRangeChange} 
+        />
+
+        {/* Performance Comparison */}
+        <PerformanceComparison 
+          data={comparisonData} 
+          loading={metricsLoading} 
+        />
+
+        {/* Metric Breakdowns */}
+        <MetricBreakdowns 
+          data={breakdownData} 
+          loading={metricsLoading} 
+        />
+      </div>
     </div>
   )
 }
