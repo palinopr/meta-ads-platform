@@ -48,41 +48,76 @@ function dateRangeToMetaPreset(dateRange?: { from: Date | undefined; to?: Date |
   }
   
   const now = new Date()
-  const diffInDays = Math.floor((now.getTime() - dateRange.from.getTime()) / (1000 * 60 * 60 * 24))
+  const from = dateRange.from
+  const to = dateRange.to
   
-  // Check if it's exactly last 7 days
-  if (diffInDays >= 6 && diffInDays <= 8) {
-    return 'last_7d'
+  // Calculate the difference between the selected dates
+  const rangeInDays = Math.floor((to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24))
+  
+  // Check if the "to" date is close to today (within 1 day)
+  const daysFromToday = Math.floor((now.getTime() - to.getTime()) / (1000 * 60 * 60 * 24))
+  const isCurrentPeriod = Math.abs(daysFromToday) <= 1
+  
+  // Log for debugging
+  console.log('📅 [dateRangeToMetaPreset] Input:', {
+    from: from.toISOString(),
+    to: to.toISOString(),
+    rangeInDays,
+    daysFromToday,
+    isCurrentPeriod
+  })
+  
+  // If it's a current period (ending today/yesterday/tomorrow due to timezone)
+  if (Math.abs(daysFromToday) <= 2) { // Allow 2 days tolerance for timezone issues
+    if (rangeInDays >= 5 && rangeInDays <= 8) {
+      console.log('📅 [dateRangeToMetaPreset] Matched: last_7d')
+      return 'last_7d'
+    } else if (rangeInDays >= 13 && rangeInDays <= 15) {
+      console.log('📅 [dateRangeToMetaPreset] Matched: last_14d')
+      return 'last_14d'
+    } else if (rangeInDays >= 28 && rangeInDays <= 31) {
+      console.log('📅 [dateRangeToMetaPreset] Matched: last_30d')
+      return 'last_30d'
+    } else if (rangeInDays >= 59 && rangeInDays <= 61) {
+      console.log('📅 [dateRangeToMetaPreset] Matched: last_60d')
+      return 'last_60d'
+    } else if (rangeInDays >= 88 && rangeInDays <= 91) {
+      console.log('📅 [dateRangeToMetaPreset] Matched: last_90d')
+      return 'last_90d'
+    }
   }
   
-  // Check if it's exactly last 30 days
-  if (diffInDays >= 29 && diffInDays <= 31) {
-    return 'last_30d'
-  }
-  
-  // Check if it's exactly last 90 days
-  if (diffInDays >= 89 && diffInDays <= 91) {
-    return 'last_90d'
-  }
-  
-  // Check if it's this month
+  // Check for "this month" - if from is start of current month and to is today
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-  if (dateRange.from.getTime() >= startOfMonth.getTime() - 86400000 && 
-      dateRange.from.getTime() <= startOfMonth.getTime() + 86400000) {
+  if (from.toDateString() === startOfMonth.toDateString() && isCurrentPeriod) {
+    console.log('📅 [dateRangeToMetaPreset] Matched: this_month')
     return 'this_month'
   }
   
-  // Check if it's last month
+  // Check for "last month" - if it spans the previous month
   const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
   const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0)
-  if (dateRange.from.getTime() >= startOfLastMonth.getTime() - 86400000 && 
-      dateRange.from.getTime() <= startOfLastMonth.getTime() + 86400000 &&
-      dateRange.to.getTime() >= endOfLastMonth.getTime() - 86400000 && 
-      dateRange.to.getTime() <= endOfLastMonth.getTime() + 86400000) {
+  if (from.toDateString() === startOfLastMonth.toDateString() && 
+      to.toDateString() === endOfLastMonth.toDateString()) {
+    console.log('📅 [dateRangeToMetaPreset] Matched: last_month')
     return 'last_month'
   }
   
-  // Default to last_30d for custom ranges
+  // Check for "year to date"
+  const startOfYear = new Date(now.getFullYear(), 0, 1)
+  if (from.toDateString() === startOfYear.toDateString() && isCurrentPeriod) {
+    console.log('📅 [dateRangeToMetaPreset] Matched: this_year')
+    return 'this_year'
+  }
+  
+  // For custom date ranges, use Meta's custom date range format
+  // Format: YYYY-MM-DD
+  const fromStr = from.toISOString().split('T')[0]
+  const toStr = to.toISOString().split('T')[0]
+  console.log(`📅 [dateRangeToMetaPreset] Using custom range: ${fromStr} to ${toStr}`)
+  
+  // For now, default to last_30d as Meta API requires specific presets
+  // TODO: Implement custom date range support with time_range parameter
   return 'last_30d'
 }
 
