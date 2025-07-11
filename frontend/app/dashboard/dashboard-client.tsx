@@ -93,16 +93,17 @@ export function DashboardClient() {
     }
   }
 
-  const loadMetrics = async (accountId: string) => {
+  const loadMetrics = async (accountId: string, customDateRange?: DateRange) => {
     try {
       setMetricsLoading(true)
       setError(null)
       
+      const rangeTouse = customDateRange || dateRange
       console.log('🔄 Loading dashboard metrics for account:', accountId)
-      console.log('📅 Using date range:', dateRange)
+      console.log('📅 Using date range:', rangeTouse)
       
       // Fetch real metrics from Meta API for the selected account
-      const response = await api.getDashboardMetrics([accountId], dateRange)
+      const response = await api.getDashboardMetrics([accountId], rangeTouse)
       
       console.log('📊 Dashboard metrics response:', response)
       console.log('📊 Raw response data:', JSON.stringify(response, null, 2))
@@ -133,15 +134,16 @@ export function DashboardClient() {
     }
   }
 
-  const loadChartData = async (accountId: string) => {
+  const loadChartData = async (accountId: string, customDateRange?: DateRange) => {
     try {
       setChartLoading(true)
       setChartError(null)
       
-      console.log('📅 Loading chart data with date range:', dateRange)
+      const rangeToUse = customDateRange || dateRange
+      console.log('📅 Loading chart data with date range:', rangeToUse)
       
       // Fetch real chart data from Meta API
-      const response = await api.getChartData(accountId, dateRange)
+      const response = await api.getChartData(accountId, rangeToUse)
       
       if (response.error) {
         setChartError(response.error)
@@ -162,15 +164,16 @@ export function DashboardClient() {
     }
   }
 
-  const loadCampaigns = async (accountIds: string[]) => {
+  const loadCampaigns = async (accountIds: string[], customDateRange?: DateRange) => {
     try {
       setCampaignsLoading(true)
       setCampaignsError(null)
       
-      console.log('📅 Loading campaigns with date range:', dateRange)
+      const rangeToUse = customDateRange || dateRange
+      console.log('📅 Loading campaigns with date range:', rangeToUse)
       
       // Fetch real campaign data from Meta API
-      const response = await api.getTopCampaigns(accountIds, 'roas', 6, dateRange, 'all')
+      const response = await api.getTopCampaigns(accountIds, 'roas', 6, rangeToUse, 'all')
       
       if (response.error) {
         setCampaignsError(response.error)
@@ -191,12 +194,13 @@ export function DashboardClient() {
     }
   }
 
-  const loadSparklineData = async (accountId: string) => {
+  const loadSparklineData = async (accountId: string, customDateRange?: DateRange) => {
     try {
+      const rangeToUse = customDateRange || dateRange
       console.log('🔄 Loading sparkline data for account:', accountId)
-      console.log('📅 Using date range:', dateRange)
+      console.log('📅 Using date range:', rangeToUse)
       
-      const response = await api.getSparklineData(accountId, dateRange)
+      const response = await api.getSparklineData(accountId, rangeToUse)
       
       if (response.error) {
         console.error('❌ Sparkline data error:', response.error)
@@ -214,16 +218,17 @@ export function DashboardClient() {
   }
 
   const handleDateRangeChange = async (newDateRange: DateRange | undefined) => {
+    console.log('📅 Date range picker changed:', newDateRange)
     setDateRange(newDateRange)
     
     if (selectedAccount && newDateRange?.from && newDateRange?.to) {
-      console.log('🔄 Date range changed, refreshing data...')
+      console.log('🔄 Date range changed, refreshing data with new range...')
       
-      // Refresh all data with new date range
-      await loadMetrics(selectedAccount)
-      await loadChartData(selectedAccount)
-      await loadCampaigns([selectedAccount])
-      await loadSparklineData(selectedAccount)
+      // Pass the new date range directly to avoid stale state issues
+      await loadMetrics(selectedAccount, newDateRange)
+      await loadChartData(selectedAccount, newDateRange)
+      await loadCampaigns([selectedAccount], newDateRange)
+      await loadSparklineData(selectedAccount, newDateRange)
     }
   }
 

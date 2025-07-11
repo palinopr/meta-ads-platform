@@ -94,11 +94,17 @@ export function DateRangePickerWithPresets({
   ]
 
   const handlePresetChange = (value: string) => {
+    console.log('🌐 [DateRangePicker] Preset selected:', value)
     setSelectedPreset(value)
     if (value !== "custom") {
       const preset = presets.find(p => p.value === value)
       if (preset) {
         const range = preset.getRange()
+        console.log('🌐 [DateRangePicker] Range calculated:', {
+          from: range.from.toISOString(),
+          to: range.to.toISOString(),
+          preset: preset.label
+        })
         onDateChange?.(range)
       }
     }
