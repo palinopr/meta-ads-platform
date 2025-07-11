@@ -8,6 +8,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { MetaAPI, MetaAdAccount, DashboardMetrics, ChartDataPoint, TopCampaign } from '@/lib/api/meta'
 import { createClient } from '@/lib/supabase/client'
+import { DateRangePickerWithPresets } from "@/components/ui/date-range-picker-with-presets"
+import { DateRange } from "react-day-picker"
+import { subDays, formatDistanceToNow } from 'date-fns'
 import { 
   DollarSign, 
   Users, 
@@ -38,6 +41,11 @@ export function DashboardClient() {
   const [campaigns, setCampaigns] = useState<TopCampaign[]>([])
   const [sparklineData, setSparklineData] = useState<any>(null)
   const [campaignsLoading, setCampaignsLoading] = useState(false)
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: subDays(new Date(), 29),
+    to: new Date()
+  })
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
 
   const supabase = createClient()
   const api = new MetaAPI(supabase)
@@ -108,6 +116,7 @@ export function DashboardClient() {
       if (response.data) {
         console.log('✅ Dashboard metrics loaded successfully:', response.data)
         setDashboardMetrics(response.data)
+        setLastUpdated(new Date())
       } else {
         console.warn('⚠️ No data returned from dashboard metrics API')
         setError('No data available. This might be a new account with no campaigns yet.')
@@ -198,6 +207,20 @@ export function DashboardClient() {
     }
   }
 
+  const handleDateRangeChange = async (newDateRange: DateRange | undefined) => {
+    setDateRange(newDateRange)
+    
+    if (selectedAccount && newDateRange?.from && newDateRange?.to) {
+      console.log('🔄 Date range changed, refreshing data...')
+      
+      // Refresh all data with new date range
+      await loadMetrics(selectedAccount)
+      await loadChartData(selectedAccount)
+      await loadCampaigns([selectedAccount])
+      await loadSparklineData(selectedAccount)
+    }
+  }
+
   const syncData = async () => {
     if (!selectedAccount) return
 
@@ -253,10 +276,28 @@ export function DashboardClient() {
               'Overview of your Meta advertising performance'
             )}
           </p>
+          
+          {/* Sync Status Badge */}
+          {lastUpdated && (
+            <div className="flex items-center mt-2 text-xs text-muted-foreground">
+              <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
+              Last updated {formatDistanceToNow(lastUpdated, { addSuffix: true })}
+            </div>
+          )}
         </div>
-        <div className="flex items-center space-x-3">
+        <div className="flex flex-col lg:flex-row items-start lg:items-center space-y-3 lg:space-y-0 lg:space-x-3">
           {accounts.length > 0 && (
             <>
+              {/* Date Range Picker */}
+              <div className="w-full lg:w-auto">
+                <DateRangePickerWithPresets
+                  date={dateRange}
+                  onDateChange={handleDateRangeChange}
+                  placeholder="Select date range"
+                  className="flex-col sm:flex-row"
+                />
+              </div>
+              
               <select 
                 className="px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-medium bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-all duration-200 min-w-[200px] focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 value={selectedAccount || ''}
