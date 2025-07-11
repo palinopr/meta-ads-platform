@@ -41,6 +41,51 @@ export interface MetaAPIResponse<T> {
   success?: boolean;
 }
 
+// Helper function to convert date range to Meta API date preset
+function dateRangeToMetaPreset(dateRange?: { from: Date; to: Date }): string {
+  if (!dateRange?.from || !dateRange?.to) {
+    return 'last_30d' // Default
+  }
+  
+  const now = new Date()
+  const diffInDays = Math.floor((now.getTime() - dateRange.from.getTime()) / (1000 * 60 * 60 * 24))
+  
+  // Check if it's exactly last 7 days
+  if (diffInDays >= 6 && diffInDays <= 8) {
+    return 'last_7d'
+  }
+  
+  // Check if it's exactly last 30 days
+  if (diffInDays >= 29 && diffInDays <= 31) {
+    return 'last_30d'
+  }
+  
+  // Check if it's exactly last 90 days
+  if (diffInDays >= 89 && diffInDays <= 91) {
+    return 'last_90d'
+  }
+  
+  // Check if it's this month
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+  if (dateRange.from.getTime() >= startOfMonth.getTime() - 86400000 && 
+      dateRange.from.getTime() <= startOfMonth.getTime() + 86400000) {
+    return 'this_month'
+  }
+  
+  // Check if it's last month
+  const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+  const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0)
+  if (dateRange.from.getTime() >= startOfLastMonth.getTime() - 86400000 && 
+      dateRange.from.getTime() <= startOfLastMonth.getTime() + 86400000 &&
+      dateRange.to.getTime() >= endOfLastMonth.getTime() - 86400000 && 
+      dateRange.to.getTime() <= endOfLastMonth.getTime() + 86400000) {
+    return 'last_month'
+  }
+  
+  // Default to last_30d for custom ranges
+  return 'last_30d'
+}
+
 export class MetaAPI {
   private supabaseClient: any;
 
@@ -207,16 +252,19 @@ export class MetaAPI {
     }
   }
 
-  async getDashboardMetrics(accountIds?: string[]): Promise<MetaAPIResponse<DashboardMetrics | null>> {
+  async getDashboardMetrics(accountIds?: string[], dateRange?: { from: Date; to: Date }): Promise<MetaAPIResponse<DashboardMetrics | null>> {
     try {
+      const datePreset = dateRangeToMetaPreset(dateRange);
+      
       console.log('🔄 [FRONTEND] Getting dashboard metrics via Supabase Edge Function...');
       console.log('📋 [FRONTEND] Account IDs:', accountIds);
+      console.log('📅 [FRONTEND] Date preset:', datePreset);
       
       // Use Supabase Edge Function as fallback due to Railway CORS issues
       const { data, error } = await this.supabaseClient.functions.invoke('get-dashboard-metrics', {
         body: { 
           account_ids: accountIds || [], // Pass all account IDs
-          date_preset: 'last_30d'
+          date_preset: datePreset
         }
       });
 
@@ -233,12 +281,16 @@ export class MetaAPI {
     }
   }
 
-  async getChartData(accountId: string, datePreset?: string): Promise<MetaAPIResponse<ChartDataPoint[]>> {
+  async getChartData(accountId: string, dateRange?: { from: Date; to: Date }): Promise<MetaAPIResponse<ChartDataPoint[]>> {
     try {
+      const datePreset = dateRangeToMetaPreset(dateRange);
+      
+      console.log('🔄 [FRONTEND] Getting chart data with date preset:', datePreset);
+      
       const { data, error } = await this.supabaseClient.functions.invoke('get-performance-chart-data', {
         body: { 
           account_ids: [accountId],
-          date_preset: datePreset || 'last_30d'
+          date_preset: datePreset
         }
       });
 
@@ -252,11 +304,16 @@ export class MetaAPI {
     }
   }
 
-  async getSparklineData(accountId: string): Promise<MetaAPIResponse<any>> {
+  async getSparklineData(accountId: string, dateRange?: { from: Date; to: Date }): Promise<MetaAPIResponse<any>> {
     try {
+      const datePreset = dateRangeToMetaPreset(dateRange);
+      
+      console.log('🔄 [FRONTEND] Getting sparkline data with date preset:', datePreset);
+      
       const { data, error } = await this.supabaseClient.functions.invoke('get-sparkline-data', {
         body: { 
-          account_id: accountId
+          account_id: accountId,
+          date_preset: datePreset
         }
       });
 
@@ -274,16 +331,20 @@ export class MetaAPI {
     accountIds: string[], 
     sortBy: 'spend' | 'roas' | 'conversions' | 'revenue' | 'clicks' | 'impressions' | 'ctr' | 'cpc' | 'cpm' = 'roas',
     limit: number = 10,
-    datePreset?: string,
+    dateRange?: { from: Date; to: Date },
     statusFilter?: 'all' | 'active' | 'paused'
   ): Promise<MetaAPIResponse<TopCampaign[]>> {
     try {
+      const datePreset = dateRangeToMetaPreset(dateRange);
+      
+      console.log('🔄 [FRONTEND] Getting top campaigns with date preset:', datePreset);
+      
       const { data, error } = await this.supabaseClient.functions.invoke('get-top-campaigns-metrics', {
         body: { 
           account_ids: accountIds,
           sort_by: sortBy,
           limit,
-          date_preset: datePreset || 'last_30d',
+          date_preset: datePreset,
           status_filter: statusFilter || 'all'
         }
       });

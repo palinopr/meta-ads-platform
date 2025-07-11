@@ -1,16 +1,9 @@
-#!/usr/bin/env python3
-"""
-Railway-optimized FastAPI app for Meta Ads Analytics
-Live logging for real-time Meta API call monitoring
-"""
-
 import os
 import logging
 import sys
 from datetime import datetime
 from fastapi import FastAPI, HTTPException, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 import httpx
@@ -23,7 +16,10 @@ load_dotenv()
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler(sys.stdout)]
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler('railway_app.log')
+    ]
 )
 
 logger = logging.getLogger("meta-ads-railway")
@@ -34,42 +30,22 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Use FastAPI's built-in CORS middleware for Railway compatibility
+# Configure CORS for Vercel frontend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://frontend-ten-eta-42.vercel.app",
         "http://localhost:3000",
-        "https://localhost:3000"
+        "https://*.vercel.app",
+        "https://frontend-pqj6xqp11-palinos-projects.vercel.app"
     ],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # Environment variables
 SUPABASE_URL = os.getenv('SUPABASE_URL')
 SUPABASE_SERVICE_ROLE_KEY = os.getenv('SUPABASE_SERVICE_ROLE_KEY')
-
-logger.info(f"🚀 Railway Meta API Backend Starting...")
-logger.info(f"🔧 Supabase URL: {SUPABASE_URL}")
-logger.info(f"🔑 Service Role Key configured: {bool(SUPABASE_SERVICE_ROLE_KEY)}")
-
-@app.get("/")
-async def root():
-    logger.info("🚀 Root endpoint hit - Railway Meta API Backend is running")
-    return {
-        "message": "Meta Ads Analytics API - Railway Backend", 
-        "status": "operational",
-        "timestamp": datetime.now().isoformat(),
-        "live_logging": "enabled"
-    }
-
-@app.get("/health")
-async def health_check():
-    logger.info("💓 Health check endpoint hit")
-    return {"status": "healthy", "timestamp": datetime.now().isoformat()}
-
 
 # Pydantic models
 class DashboardMetricsResponse(BaseModel):
@@ -90,6 +66,10 @@ class DashboardMetricsResponse(BaseModel):
     activeAccounts: int
     dateRange: str
     lastUpdated: str
+
+class SparklineDataResponse(BaseModel):
+    data: List[Dict[str, Any]]
+    success: bool
 
 async def get_user_meta_token(authorization: str = Header(...)):
     """Get user's Meta access token from Supabase profiles"""
@@ -154,6 +134,21 @@ async def get_user_meta_token(authorization: str = Header(...)):
     except httpx.RequestError as e:
         logger.error(f"❌ Request error: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to authenticate user")
+
+@app.get("/")
+async def root():
+    logger.info("🚀 Root endpoint hit - Railway Meta API Backend is running")
+    return {
+        "message": "Meta Ads Analytics API - Railway Backend", 
+        "status": "operational",
+        "timestamp": datetime.now().isoformat(),
+        "live_logging": "enabled"
+    }
+
+@app.get("/health")
+async def health_check():
+    logger.info("💓 Health check endpoint hit")
+    return {"status": "healthy", "timestamp": datetime.now().isoformat()}
 
 @app.post("/api/dashboard-metrics")
 async def get_dashboard_metrics(
@@ -270,6 +265,62 @@ async def get_dashboard_metrics(
     except Exception as e:
         logger.error(f"❌ [ERROR] Unexpected error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+
+@app.post("/api/sparkline-data")
+async def get_sparkline_data(
+    request_data: Dict[str, Any],
+    meta_token: str = Depends(get_user_meta_token)
+):
+    """Get sparkline data directly from Meta API with live logging"""
+    
+    account_id = request_data.get('account_id')
+    
+    logger.info(f"🔄 [SPARKLINE] Starting sparkline fetch for account: {account_id}")
+    
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            # Get last 7 days of data for sparkline
+            insights_url = f"https://graph.facebook.com/v19.0/act_{account_id}/insights"
+            params = {
+                'access_token': meta_token,
+                'fields': 'spend,impressions,clicks,date_start',
+                'date_preset': 'last_7d',
+                'time_increment': 1,  # Daily breakdown
+                'level': 'account'
+            }
+            
+            logger.info(f"🌐 [SPARKLINE] Calling Meta API for 7-day data...")
+            
+            response = await client.get(insights_url, params=params)
+            
+            logger.info(f"📡 [SPARKLINE] Response status: {response.status_code}")
+            
+            if response.status_code != 200:
+                error_text = response.text
+                logger.error(f"❌ [SPARKLINE] Meta API error: {error_text}")
+                return {"data": [], "success": False}
+            
+            insights_data = response.json()
+            logger.info(f"📊 [SPARKLINE] Raw response: {insights_data}")
+            
+            # Process sparkline data
+            sparkline_data = []
+            for insight in insights_data.get('data', []):
+                sparkline_data.append({
+                    'date': insight.get('date_start'),
+                    'value': float(insight.get('spend', 0)),
+                    'clicks': int(insight.get('clicks', 0)),
+                    'impressions': int(insight.get('impressions', 0))
+                })
+            
+            logger.info(f"✅ [SPARKLINE] Processed {len(sparkline_data)} data points")
+            logger.info(f"📈 [SPARKLINE] Data: {sparkline_data}")
+            
+            return {"data": sparkline_data, "success": True}
+            
+    except Exception as e:
+        logger.error(f"❌ [SPARKLINE ERROR] {str(e)}")
+        return {"data": [], "success": False}
 
 if __name__ == "__main__":
     import uvicorn

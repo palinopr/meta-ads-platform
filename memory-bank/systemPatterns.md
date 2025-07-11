@@ -13,6 +13,91 @@ const campaigns = await api.getCampaigns(accountId) // Fresh from Meta
 const campaigns = await db.campaigns.findMany() // Stale data
 ```
 
+### 🚨 CRITICAL LESSON: Database Validation Anti-Pattern
+**NEVER validate account access through database before Meta API calls**
+
+```typescript
+// ❌ WRONG: Database validation anti-pattern
+const accountData = await supabase
+  .from('meta_ad_accounts')
+  .select('*')
+  .eq('account_id', account_id)
+  .single()
+
+if (!accountData) {
+  return new Response('Account not found', { status: 403 })
+}
+
+// ✅ CORRECT: Direct Meta API validation
+const metaResponse = await fetch(`https://graph.facebook.com/v19.0/${account_id}/insights`, {
+  headers: { Authorization: `Bearer ${token}` }
+})
+
+if (!metaResponse.ok) {
+  return new Response('Invalid account or access denied', { status: 403 })
+}
+```
+
+**Why this matters:**
+- Database may not have all user's accounts
+- Meta API is authoritative source of access permissions
+- Reduces complexity and eliminates sync issues
+- Faster response times (one API call vs database + API)
+
+## Railway Backend Architecture (NEW)
+
+### Live Meta API Monitoring Pattern
+**Use Railway for always-on server with real-time logging**
+
+```typescript
+// ✅ NEW: Railway backend for live monitoring
+Frontend (Vercel) → Railway Backend → Meta API
+                 ↘ Database (Supabase) ↗
+
+// Railway benefits:
+// - Always-on server (not serverless)
+// - Real-time console logs: railway logs --deployment
+// - Live debugging of Meta API responses
+// - Comprehensive error tracking
+```
+
+### Railway vs Supabase Edge Functions
+
+| Feature | Railway | Supabase Edge Functions |
+|---------|---------|-------------------------|
+| **Live Monitoring** | ✅ `railway logs --deployment` | ❌ Limited logging |
+| **Always-On Server** | ✅ Persistent process | ❌ Serverless (spin up/down) |
+| **Real-time Debugging** | ✅ Live console output | ❌ Function invocation logs only |
+| **Development Experience** | ✅ Like `vercel logs --follow` | ❌ No live streaming |
+| **Meta API Debugging** | ✅ See exact API responses | ❌ Limited visibility |
+
+### Railway Deployment Pattern
+
+```bash
+# Setup Railway project
+cd backend/
+railway login
+railway init
+railway variables --set "SUPABASE_URL=..."
+railway variables --set "SUPABASE_SERVICE_ROLE_KEY=..."
+railway up
+
+# Live monitoring
+railway logs --deployment  # Real-time Meta API call tracking
+```
+
+### Railway App Structure
+```python
+# app.py - Railway FastAPI backend
+@app.post("/api/dashboard-metrics")
+async def get_dashboard_metrics(request_data, meta_token: str = Depends(get_user_meta_token)):
+    logger.info(f"🔄 [DASHBOARD] Starting metrics fetch for account: {account_id}")
+    logger.info(f"🌐 [META API] Calling insights endpoint: {insights_url}")
+    logger.info(f"📊 [META API] Raw insights response: {insights_data}")
+    logger.info(f"✅ [SUCCESS] Dashboard metrics processed successfully")
+    # Real-time visibility into Meta API responses!
+```
+
 ### Component Architecture
 
 #### Dashboard Components Structure

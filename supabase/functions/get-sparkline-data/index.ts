@@ -23,7 +23,7 @@ interface SparklineResponse {
   totalImpressions: SparklineData[]
 }
 
-async function fetchMetaSparklineData(accessToken: string, accountId: string): Promise<SparklineResponse> {
+async function fetchMetaSparklineData(accessToken: string, accountId: string, datePreset: string = 'last_7d'): Promise<SparklineResponse> {
   const today = new Date()
   const sparklineData: SparklineResponse = {
     totalSpend: [],
@@ -36,8 +36,13 @@ async function fetchMetaSparklineData(accessToken: string, accountId: string): P
     totalImpressions: []
   }
 
-  // Fetch last 7 days of data
-  for (let i = 6; i >= 0; i--) {
+  // Determine number of days based on date preset
+  const daysToFetch = datePreset === 'last_7d' ? 7 : 
+                     datePreset === 'last_30d' ? 30 : 
+                     datePreset === 'last_90d' ? 90 : 7 // Default to 7 days
+
+  // Fetch data for the specified period
+  for (let i = daysToFetch - 1; i >= 0; i--) {
     const date = new Date(today)
     date.setDate(date.getDate() - i)
     const dateStr = date.toISOString().split('T')[0]
@@ -103,7 +108,7 @@ serve(async (req) => {
   }
 
   try {
-    const { account_id } = await req.json()
+    const { account_id, date_preset = 'last_7d' } = await req.json()
 
     if (!account_id) {
       return new Response(
@@ -111,6 +116,8 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
+
+    console.log(`Fetching sparkline data for account: ${account_id} with date preset: ${date_preset}`)
 
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -155,25 +162,11 @@ serve(async (req) => {
       )
     }
 
-    // Verify account access
-    const { data: accountData, error: accountError } = await supabaseAdmin
-      .from('meta_ad_accounts')
-      .select('account_id')
-      .eq('account_id', account_id)
-      .eq('user_id', user.id)
-      .single()
-
-    if (accountError || !accountData) {
-      return new Response(
-        JSON.stringify({ error: 'Account not found or access denied' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    console.log(`Fetching sparkline data for account: ${account_id}`)
+    // Direct Meta API pattern - no database validation needed
+    // If user has invalid token or account access, Meta API will return error
 
     // Fetch sparkline data from Meta API
-    const sparklineData = await fetchMetaSparklineData(profile.meta_access_token, account_id)
+    const sparklineData = await fetchMetaSparklineData(profile.meta_access_token, account_id, date_preset)
 
     console.log(`Successfully fetched sparkline data for account: ${account_id}`)
 

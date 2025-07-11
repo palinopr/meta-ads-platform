@@ -99,9 +99,10 @@ export function DashboardClient() {
       setError(null)
       
       console.log('🔄 Loading dashboard metrics for account:', accountId)
+      console.log('📅 Using date range:', dateRange)
       
       // Fetch real metrics from Meta API for the selected account
-      const response = await api.getDashboardMetrics([accountId])
+      const response = await api.getDashboardMetrics([accountId], dateRange)
       
       console.log('📊 Dashboard metrics response:', response)
       console.log('📊 Raw response data:', JSON.stringify(response, null, 2))
@@ -137,8 +138,10 @@ export function DashboardClient() {
       setChartLoading(true)
       setChartError(null)
       
+      console.log('📅 Loading chart data with date range:', dateRange)
+      
       // Fetch real chart data from Meta API
-      const response = await api.getChartData(accountId)
+      const response = await api.getChartData(accountId, dateRange)
       
       if (response.error) {
         setChartError(response.error)
@@ -164,8 +167,10 @@ export function DashboardClient() {
       setCampaignsLoading(true)
       setCampaignsError(null)
       
+      console.log('📅 Loading campaigns with date range:', dateRange)
+      
       // Fetch real campaign data from Meta API
-      const response = await api.getTopCampaigns(accountIds, 'roas', 6, 'last_30d', 'all')
+      const response = await api.getTopCampaigns(accountIds, 'roas', 6, dateRange, 'all')
       
       if (response.error) {
         setCampaignsError(response.error)
@@ -189,8 +194,9 @@ export function DashboardClient() {
   const loadSparklineData = async (accountId: string) => {
     try {
       console.log('🔄 Loading sparkline data for account:', accountId)
+      console.log('📅 Using date range:', dateRange)
       
-      const response = await api.getSparklineData(accountId)
+      const response = await api.getSparklineData(accountId, dateRange)
       
       if (response.error) {
         console.error('❌ Sparkline data error:', response.error)
