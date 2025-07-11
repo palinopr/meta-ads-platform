@@ -209,18 +209,26 @@ export class MetaAPI {
 
   async getDashboardMetrics(accountIds?: string[]): Promise<MetaAPIResponse<DashboardMetrics | null>> {
     try {
+      console.log('🔄 [FRONTEND] Getting dashboard metrics via Supabase Edge Function...');
+      console.log('📋 [FRONTEND] Account IDs:', accountIds);
+      
+      // Use Supabase Edge Function as fallback due to Railway CORS issues
       const { data, error } = await this.supabaseClient.functions.invoke('get-dashboard-metrics', {
         body: { 
-          account_ids: accountIds || [] 
+          account_ids: accountIds || [], // Pass all account IDs
+          date_preset: 'last_30d'
         }
       });
 
       if (error) {
+        console.error('❌ [FRONTEND] Supabase edge function error:', error);
         return { data: null, error: error.message };
       }
 
+      console.log('✅ [FRONTEND] Dashboard metrics received:', data);
       return { data: data || null, success: true };
     } catch (error: any) {
+      console.error('❌ [FRONTEND] Error calling Supabase edge function:', error);
       return { data: null, error: error.message };
     }
   }
@@ -229,7 +237,7 @@ export class MetaAPI {
     try {
       const { data, error } = await this.supabaseClient.functions.invoke('get-performance-chart-data', {
         body: { 
-          account_id: accountId,
+          account_ids: [accountId],
           date_preset: datePreset || 'last_30d'
         }
       });
