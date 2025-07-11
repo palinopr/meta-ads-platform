@@ -1,10 +1,36 @@
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.3'
+import { rateLimit, getClientIP, logSecurityEvent, sanitizeError, validateContentType } from '../shared/security.ts'
+
+// Security: Restrict CORS to allowed origins only
+const ALLOWED_ORIGINS = [
+  'https://frontend-ten-eta-42.vercel.app',
+  'https://frontend-dpfwxnxjb-palinos-projects.vercel.app',
+  'http://localhost:3000',
+  'https://localhost:3000'
+]
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': '*', // Will be overridden per request
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'X-XSS-Protection': '1; mode=block',
+  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
+  'Content-Security-Policy': "default-src 'self'; script-src 'self'; object-src 'none';"
+}
+
+// Security: Get secure CORS headers based on request origin
+function getSecureCorsHeaders(req: Request): HeadersInit {
+  const origin = req.headers.get('origin')
+  const isAllowedOrigin = origin && ALLOWED_ORIGINS.includes(origin)
+  
+  return {
+    ...corsHeaders,
+    'Access-Control-Allow-Origin': isAllowedOrigin ? origin : ALLOWED_ORIGINS[0],
+    'Access-Control-Allow-Credentials': 'true',
+  }
 }
 
 interface MetaInsight {
@@ -171,8 +197,44 @@ async function fetchMetaCampaigns(accessToken: string, accountId: string): Promi
 }
 
 serve(async (req) => {
+  const secureHeaders = getSecureCorsHeaders(req)
+  const clientIP = getClientIP(req)
+  
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response('ok', { headers: secureHeaders })
+  }
+
+  // Security: Rate limiting
+  const rateLimitResult = rateLimit({
+    maxRequests: 100,
+    windowMs: 60 * 1000, // 1 minute
+    identifier: `dashboard-metrics:${clientIP}`
+  })
+  
+  if (!rateLimitResult.allowed) {
+    logSecurityEvent('RATE_LIMIT_EXCEEDED', undefined, clientIP, { endpoint: 'get-dashboard-metrics' })
+    return new Response(
+      JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
+      { 
+        status: 429, 
+        headers: { 
+          ...secureHeaders, 
+          'Content-Type': 'application/json',
+          'X-RateLimit-Limit': '100',
+          'X-RateLimit-Remaining': '0',
+          'X-RateLimit-Reset': rateLimitResult.resetTime.toString()
+        } 
+      }
+    )
+  }
+
+  // Security: Validate content type
+  if (req.method === 'POST' && !validateContentType(req, ['application/json'])) {
+    logSecurityEvent('INVALID_CONTENT_TYPE', undefined, clientIP, { contentType: req.headers.get('content-type') })
+    return new Response(
+      JSON.stringify({ error: 'Invalid content type' }),
+      { status: 400, headers: { ...secureHeaders, 'Content-Type': 'application/json' } }
+    )
   }
 
   try {
@@ -199,11 +261,14 @@ serve(async (req) => {
     } = await supabaseClient.auth.getUser()
 
     if (authError || !user) {
+      logSecurityEvent('UNAUTHORIZED_ACCESS', undefined, clientIP, { endpoint: 'get-dashboard-metrics' })
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 401, headers: { ...secureHeaders, 'Content-Type': 'application/json' } }
       )
     }
+
+    logSecurityEvent('AUTHORIZED_ACCESS', user.id, clientIP, { endpoint: 'get-dashboard-metrics' })
 
     // Use service role to get profile data
     const supabaseAdmin = createClient(
@@ -221,7 +286,7 @@ serve(async (req) => {
     if (profileError || !profile?.meta_access_token) {
       return new Response(
         JSON.stringify({ error: 'Meta access token not found. Please connect your Meta account.' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...secureHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -236,7 +301,7 @@ serve(async (req) => {
       if (!adAccounts || adAccounts.length === 0) {
         return new Response(
           JSON.stringify({ error: 'No Meta ad accounts found or accessible with current permissions.' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 400, headers: { ...secureHeaders, 'Content-Type': 'application/json' } }
         )
       }
       
@@ -245,7 +310,7 @@ serve(async (req) => {
       console.error('Error fetching ad accounts from Meta API:', error)
       return new Response(
         JSON.stringify({ error: 'Failed to fetch ad accounts from Meta API. Please check your Meta connection.' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...secureHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -412,13 +477,19 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify(dashboardMetrics),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { headers: { ...secureHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (error) {
+    const sanitizedError = sanitizeError(error)
+    logSecurityEvent('FUNCTION_ERROR', undefined, clientIP, { 
+      endpoint: 'get-dashboard-metrics', 
+      error: sanitizedError 
+    })
+    
     console.error('Error:', error)
     return new Response(
-      JSON.stringify({ error: 'Internal server error', details: error.message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ error: 'Internal server error', details: sanitizedError }),
+      { status: 500, headers: { ...secureHeaders, 'Content-Type': 'application/json' } }
     )
   }
 })

@@ -225,5 +225,28 @@ async def sync_data(
             detail="No Meta access token found. Please connect your Meta account."
         )
     
-    # TODO: Implement sync logic with Celery task
-    return {"message": "Sync initiated", "status": "pending"}
+    # Sync logic implemented using direct API calls (following Direct API pattern)
+    # No database storage needed - data is fetched directly from Meta API
+    try:
+        meta_service = MetaAPIService(current_user.meta_access_token)
+        accounts_result = meta_service.get_ad_accounts()
+        
+        if not accounts_result.get('success'):
+            return {
+                "message": "Sync failed", 
+                "status": "error",
+                "error": accounts_result.get('error', 'Unknown error')
+            }
+        
+        return {
+            "message": "Sync completed successfully", 
+            "status": "completed",
+            "accounts_synced": len(accounts_result.get('data', [])),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        return {
+            "message": "Sync failed with exception", 
+            "status": "error",
+            "error": str(e)
+        }

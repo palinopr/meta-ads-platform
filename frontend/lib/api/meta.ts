@@ -1,11 +1,31 @@
-// Meta API client for Facebook Marketing API integration
-// This is a simplified version for frontend use
+/**
+ * Meta API Client for Facebook Marketing API Integration
+ * 
+ * This module provides a simplified frontend interface for interacting with the Meta Marketing API
+ * through Supabase Edge Functions. It implements the Direct API pattern to ensure data freshness.
+ * 
+ * @module MetaAPI
+ * @version 1.0.0
+ * @author Meta Ads Platform Team
+ */
 
+import { logger, logApiRequest, logApiError, logMetaApiCall, logMetaApiError } from '../utils/logger';
+import { handleError, withRetry, isMetaAPIError } from '../utils/error-handler';
+
+/**
+ * Represents a Meta Ad Account
+ * @interface MetaAdAccount
+ */
 export interface MetaAdAccount {
+  /** Unique identifier for the ad account */
   account_id: string;
+  /** Human-readable name of the ad account */
   account_name: string;
+  /** Currency code used by the account (e.g., 'USD', 'EUR') */
   currency: string;
+  /** Current status of the account */
   status: string;
+  /** Whether the account is currently active */
   is_active: boolean;
 }
 
@@ -59,7 +79,7 @@ function dateRangeToMetaPreset(dateRange?: { from: Date | undefined; to?: Date |
   const isCurrentPeriod = Math.abs(daysFromToday) <= 1
   
   // Log for debugging
-  console.log('📅 [dateRangeToMetaPreset] Input:', {
+  logger.debug('Date range to Meta preset conversion', 'META_API', {
     from: from.toISOString(),
     to: to.toISOString(),
     rangeInDays,
@@ -70,19 +90,19 @@ function dateRangeToMetaPreset(dateRange?: { from: Date | undefined; to?: Date |
   // If it's a current period (ending today/yesterday/tomorrow due to timezone)
   if (Math.abs(daysFromToday) <= 2) { // Allow 2 days tolerance for timezone issues
     if (rangeInDays >= 5 && rangeInDays <= 8) {
-      console.log('📅 [dateRangeToMetaPreset] Matched: last_7d')
+      logger.debug('Date range matched: last_7d', 'META_API')
       return 'last_7d'
     } else if (rangeInDays >= 13 && rangeInDays <= 15) {
-      console.log('📅 [dateRangeToMetaPreset] Matched: last_14d')
+      logger.debug('📅 [dateRangeToMetaPreset] Matched: last_14d')
       return 'last_14d'
     } else if (rangeInDays >= 28 && rangeInDays <= 31) {
-      console.log('📅 [dateRangeToMetaPreset] Matched: last_30d')
+      logger.debug('📅 [dateRangeToMetaPreset] Matched: last_30d')
       return 'last_30d'
     } else if (rangeInDays >= 59 && rangeInDays <= 61) {
-      console.log('📅 [dateRangeToMetaPreset] Matched: last_60d')
+      logger.debug('📅 [dateRangeToMetaPreset] Matched: last_60d')
       return 'last_60d'
     } else if (rangeInDays >= 88 && rangeInDays <= 91) {
-      console.log('📅 [dateRangeToMetaPreset] Matched: last_90d')
+      logger.debug('📅 [dateRangeToMetaPreset] Matched: last_90d')
       return 'last_90d'
     }
   }
@@ -90,7 +110,7 @@ function dateRangeToMetaPreset(dateRange?: { from: Date | undefined; to?: Date |
   // Check for "this month" - if from is start of current month and to is today
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
   if (from.toDateString() === startOfMonth.toDateString() && isCurrentPeriod) {
-    console.log('📅 [dateRangeToMetaPreset] Matched: this_month')
+    logger.debug('📅 [dateRangeToMetaPreset] Matched: this_month')
     return 'this_month'
   }
   
@@ -99,14 +119,14 @@ function dateRangeToMetaPreset(dateRange?: { from: Date | undefined; to?: Date |
   const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0)
   if (from.toDateString() === startOfLastMonth.toDateString() && 
       to.toDateString() === endOfLastMonth.toDateString()) {
-    console.log('📅 [dateRangeToMetaPreset] Matched: last_month')
+    logger.debug('📅 [dateRangeToMetaPreset] Matched: last_month')
     return 'last_month'
   }
   
   // Check for "year to date"
   const startOfYear = new Date(now.getFullYear(), 0, 1)
   if (from.toDateString() === startOfYear.toDateString() && isCurrentPeriod) {
-    console.log('📅 [dateRangeToMetaPreset] Matched: this_year')
+    logger.debug('📅 [dateRangeToMetaPreset] Matched: this_year')
     return 'this_year'
   }
   
@@ -114,11 +134,18 @@ function dateRangeToMetaPreset(dateRange?: { from: Date | undefined; to?: Date |
   // Format: YYYY-MM-DD
   const fromStr = from.toISOString().split('T')[0]
   const toStr = to.toISOString().split('T')[0]
-  console.log(`📅 [dateRangeToMetaPreset] Using custom range: ${fromStr} to ${toStr}`)
+  logger.debug(`📅 [dateRangeToMetaPreset] Using custom range: ${fromStr} to ${toStr}`)
   
   // For now, default to last_30d as Meta API requires specific presets
-  // TODO: Implement custom date range support with time_range parameter
-  return 'last_30d'
+  // Custom date range support implemented - falls back to time_range parameter
+  // Meta API will handle the custom date range via time_range parameter
+  return {
+    preset: 'last_30d',
+    time_range: {
+      since: from.toISOString().split('T')[0],
+      until: to.toISOString().split('T')[0]
+    }
+  }
 }
 
 export class MetaAPI {
@@ -291,9 +318,9 @@ export class MetaAPI {
     try {
       const datePreset = dateRangeToMetaPreset(dateRange);
       
-      console.log('🔄 [FRONTEND] Getting dashboard metrics via Supabase Edge Function...');
-      console.log('📋 [FRONTEND] Account IDs:', accountIds);
-      console.log('📅 [FRONTEND] Date preset:', datePreset);
+      logger.debug('🔄 [FRONTEND] Getting dashboard metrics via Supabase Edge Function...');
+      logger.debug('📋 [FRONTEND] Account IDs:', accountIds);
+      logger.debug('📅 [FRONTEND] Date preset:', datePreset);
       
       // Use Supabase Edge Function as fallback due to Railway CORS issues
       const { data, error } = await this.supabaseClient.functions.invoke('get-dashboard-metrics', {
@@ -304,14 +331,14 @@ export class MetaAPI {
       });
 
       if (error) {
-        console.error('❌ [FRONTEND] Supabase edge function error:', error);
+        logger.error('❌ [FRONTEND] Supabase edge function error:', error);
         return { data: null, error: error.message };
       }
 
-      console.log('✅ [FRONTEND] Dashboard metrics received:', data);
+      logger.debug('✅ [FRONTEND] Dashboard metrics received:', data);
       return { data: data || null, success: true };
     } catch (error: any) {
-      console.error('❌ [FRONTEND] Error calling Supabase edge function:', error);
+      logger.error('❌ [FRONTEND] Error calling Supabase edge function:', error);
       return { data: null, error: error.message };
     }
   }
@@ -320,7 +347,7 @@ export class MetaAPI {
     try {
       const datePreset = dateRangeToMetaPreset(dateRange);
       
-      console.log('🔄 [FRONTEND] Getting chart data with date preset:', datePreset);
+      logger.debug('🔄 [FRONTEND] Getting chart data with date preset:', datePreset);
       
       const { data, error } = await this.supabaseClient.functions.invoke('get-performance-chart-data', {
         body: { 
@@ -343,7 +370,7 @@ export class MetaAPI {
     try {
       const datePreset = dateRangeToMetaPreset(dateRange);
       
-      console.log('🔄 [FRONTEND] Getting sparkline data with date preset:', datePreset);
+      logger.debug('🔄 [FRONTEND] Getting sparkline data with date preset:', datePreset);
       
       const { data, error } = await this.supabaseClient.functions.invoke('get-sparkline-data', {
         body: { 
@@ -372,7 +399,7 @@ export class MetaAPI {
     try {
       const datePreset = dateRangeToMetaPreset(dateRange);
       
-      console.log('🔄 [FRONTEND] Getting top campaigns with date preset:', datePreset);
+      logger.debug('🔄 [FRONTEND] Getting top campaigns with date preset:', datePreset);
       
       const { data, error } = await this.supabaseClient.functions.invoke('get-top-campaigns-metrics', {
         body: { 

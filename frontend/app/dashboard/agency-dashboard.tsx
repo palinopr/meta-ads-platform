@@ -211,15 +211,37 @@ export function AgencyDashboard() {
       setComparisonData([])
       setBreakdownData(null)
       
-      // TODO: Implement real data fetching
-      // const { data, error } = await supabase.functions.invoke('get-agency-chart-data', {
-      //   body: { agency_id: agencyId }
-      // })
-      // if (data) {
-      //   setChartData(data.chartData || [])
-      //   setComparisonData(data.comparisonData || [])
-      //   setBreakdownData(data.breakdownData || null)
-      // }
+      // Real data fetching implemented using Direct API pattern
+      try {
+        const supabase = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        )
+        
+        const { data, error } = await supabase.functions.invoke('get-dashboard-metrics', {
+          body: { 
+            agency_id: agencyId,
+            date_preset: 'last_30d'
+          }
+        })
+        
+        if (error) {
+          logger.error('Failed to fetch agency dashboard data', 'AGENCY_DASHBOARD', { error })
+          setError('Failed to load dashboard data')
+          return
+        }
+        
+        if (data) {
+          // Transform data for chart components
+          setChartData(data.chartData || [])
+          setComparisonData(data.comparisonData || [])
+          setBreakdownData(data.breakdownData || null)
+          logger.info('Agency dashboard data loaded successfully', 'AGENCY_DASHBOARD')
+        }
+      } catch (err) {
+        logger.error('Exception while fetching agency data', 'AGENCY_DASHBOARD', { error: err })
+        setError('Failed to load dashboard data')
+      }
     } catch (err) {
       console.error('Error loading chart data:', err)
     }
