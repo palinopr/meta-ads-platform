@@ -207,10 +207,12 @@ export class MetaAPI {
     }
   }
 
-  async getDashboardMetrics(): Promise<MetaAPIResponse<DashboardMetrics | null>> {
+  async getDashboardMetrics(accountIds?: string[]): Promise<MetaAPIResponse<DashboardMetrics | null>> {
     try {
       const { data, error } = await this.supabaseClient.functions.invoke('get-dashboard-metrics', {
-        body: {}
+        body: { 
+          account_ids: accountIds || [] 
+        }
       });
 
       if (error) {
@@ -237,6 +239,59 @@ export class MetaAPI {
       }
 
       return { data: data?.data || [], success: true };
+    } catch (error: any) {
+      return { data: [], error: error.message };
+    }
+  }
+
+  async getTopCampaigns(
+    accountIds: string[], 
+    sortBy: 'spend' | 'roas' | 'conversions' | 'revenue' | 'clicks' | 'impressions' | 'ctr' | 'cpc' | 'cpm' = 'roas',
+    limit: number = 10,
+    datePreset?: string,
+    statusFilter?: 'all' | 'active' | 'paused'
+  ): Promise<MetaAPIResponse<TopCampaign[]>> {
+    try {
+      const { data, error } = await this.supabaseClient.functions.invoke('get-top-campaigns-metrics', {
+        body: { 
+          account_ids: accountIds,
+          sort_by: sortBy,
+          limit,
+          date_preset: datePreset || 'last_30d',
+          status_filter: statusFilter || 'all'
+        }
+      });
+
+      if (error) {
+        return { data: [], error: error.message };
+      }
+
+      // Transform campaigns to include trend calculation
+      const campaigns = (data?.campaigns || []).map((campaign: any) => ({
+        id: campaign.id,
+        name: campaign.name,
+        status: campaign.status as 'ACTIVE' | 'PAUSED' | 'COMPLETED' | 'UNKNOWN',
+        objective: campaign.objective,
+        spend: campaign.spend,
+        revenue: campaign.revenue,
+        roas: campaign.roas,
+        conversions: campaign.conversions,
+        clicks: campaign.clicks,
+        impressions: campaign.impressions,
+        cpc: campaign.cpc,
+        cpm: campaign.cpm,
+        ctr: campaign.ctr,
+        account_id: campaign.account_id,
+        account_name: campaign.account_name,
+        // Calculate trend based on ROAS performance
+        trend: campaign.roas > 2.0 ? 'up' as const : 
+               campaign.roas < 1.0 ? 'down' as const : 
+               'flat' as const,
+        // Calculate change percent based on ROAS vs target
+        changePercent: Math.round((campaign.roas - 1.5) * 100) / 10 // Target ROAS of 1.5x
+      }));
+
+      return { data: campaigns, success: true };
     } catch (error: any) {
       return { data: [], error: error.message };
     }
@@ -270,4 +325,24 @@ export interface ChartDataPoint {
   ctr: number;
   impressions: number;
   clicks: number;
+}
+
+export interface TopCampaign {
+  id: string;
+  name: string;
+  status: 'ACTIVE' | 'PAUSED' | 'COMPLETED' | 'UNKNOWN';
+  objective: string;
+  spend: number;
+  revenue: number;
+  roas: number;
+  conversions: number;
+  clicks: number;
+  impressions: number;
+  cpc: number;
+  cpm: number;
+  ctr: number;
+  account_id: string;
+  account_name?: string;
+  trend: 'up' | 'down' | 'flat';
+  changePercent: number;
 }

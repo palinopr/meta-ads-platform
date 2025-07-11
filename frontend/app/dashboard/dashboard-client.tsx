@@ -6,7 +6,7 @@ import { PerformanceChart } from "@/components/dashboard/PerformanceChart"
 import { TopCampaigns } from "@/components/dashboard/TopCampaigns"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { MetaAPI, MetaAdAccount, DashboardMetrics, ChartDataPoint } from '@/lib/api/meta'
+import { MetaAPI, MetaAdAccount, DashboardMetrics, ChartDataPoint, TopCampaign } from '@/lib/api/meta'
 import { createClient } from '@/lib/supabase/client'
 import { 
   DollarSign, 
@@ -33,6 +33,8 @@ export function DashboardClient() {
   const [chartLoading, setChartLoading] = useState(false)
   const [metricsLoading, setMetricsLoading] = useState(false)
   const [dashboardMetrics, setDashboardMetrics] = useState<DashboardMetrics | null>(null)
+  const [campaigns, setCampaigns] = useState<TopCampaign[]>([])
+  const [campaignsLoading, setCampaignsLoading] = useState(false)
 
   const supabase = createClient()
   const api = new MetaAPI(supabase)
@@ -82,8 +84,10 @@ export function DashboardClient() {
       setMetricsLoading(true)
       setError(null)
       
-      // Fetch real metrics from Meta API
-      const response = await api.getDashboardMetrics()
+      console.log('🔄 Loading dashboard metrics for account:', accountId)
+      
+      // Fetch real metrics from Meta API for the selected account
+      const response = await api.getDashboardMetrics([accountId])
       
       if (response.error) {
         setError(response.error)
@@ -92,7 +96,26 @@ export function DashboardClient() {
       }
       
       if (response.data) {
+        console.log('✅ Dashboard metrics loaded successfully:', response.data)
         setDashboardMetrics(response.data)
+      } else {
+        // No data returned but no error - this might be a new account with no campaigns
+        setDashboardMetrics({
+          totalSpend: 0,
+          totalClicks: 0,
+          totalImpressions: 0,
+          averageRoas: 0,
+          activeCampaigns: 0,
+          totalConversions: 0,
+          averageCTR: 0,
+          averageCPC: 0,
+          performanceChange: {
+            spend: 0,
+            roas: 0,
+            ctr: 0,
+          },
+          lastUpdated: new Date().toISOString()
+        })
       }
       
     } catch (err) {
@@ -167,7 +190,7 @@ export function DashboardClient() {
   }
 
   return (
-    <div className="flex-1 space-y-4 p-8 pt-6">
+    <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between space-y-2">
         <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
         <div className="flex items-center space-x-2">
@@ -204,7 +227,20 @@ export function DashboardClient() {
       {error && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription>
+            {error}
+            {error.includes('Meta access token') && (
+              <div className="mt-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => window.location.href = '/settings'}
+                >
+                  Connect Meta Account
+                </Button>
+              </div>
+            )}
+          </AlertDescription>
         </Alert>
       )}
 
@@ -224,88 +260,96 @@ export function DashboardClient() {
       ) : (
         <>
           {/* Key Metrics */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <MetricCard
               title="Total Spend"
               value={dashboardMetrics?.totalSpend || 0}
               previousValue={dashboardMetrics ? dashboardMetrics.totalSpend * 0.85 : 0}
               format="currency"
-              icon={<DollarSign className="h-4 w-4 text-muted-foreground" />}
+              icon={<DollarSign className="h-5 w-5 text-muted-foreground" />}
               loading={metricsLoading}
+              size="large"
             />
             <MetricCard
               title="ROAS"
               value={dashboardMetrics?.averageRoas || 0}
               previousValue={dashboardMetrics ? dashboardMetrics.averageRoas * 0.95 : 0}
               format="number"
-              icon={<TrendingUp className="h-4 w-4 text-muted-foreground" />}
+              icon={<TrendingUp className="h-5 w-5 text-muted-foreground" />}
               loading={metricsLoading}
+              size="large"
             />
             <MetricCard
               title="Conversions"
               value={dashboardMetrics?.totalConversions || 0}
               previousValue={dashboardMetrics ? dashboardMetrics.totalConversions * 0.9 : 0}
               format="number"
-              icon={<ShoppingCart className="h-4 w-4 text-muted-foreground" />}
+              icon={<ShoppingCart className="h-5 w-5 text-muted-foreground" />}
               loading={metricsLoading}
+              size="large"
             />
             <MetricCard
               title="Cost Per Click"
               value={dashboardMetrics?.averageCPC || 0}
               previousValue={dashboardMetrics ? dashboardMetrics.averageCPC * 1.05 : 0}
               format="currency"
-              icon={<Target className="h-4 w-4 text-muted-foreground" />}
+              icon={<Target className="h-5 w-5 text-muted-foreground" />}
               invertTrend={true}
               loading={metricsLoading}
+              size="large"
             />
           </div>
 
           {/* Secondary Metrics */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <MetricCard
               title="Impressions"
               value={dashboardMetrics?.totalImpressions || 0}
               previousValue={dashboardMetrics ? dashboardMetrics.totalImpressions * 0.95 : undefined}
               format="number"
-              icon={<Eye className="h-4 w-4 text-muted-foreground" />}
+              icon={<Eye className="h-5 w-5 text-muted-foreground" />}
               loading={metricsLoading}
+              size="medium"
             />
             <MetricCard
               title="Clicks"
               value={dashboardMetrics?.totalClicks || 0}
               previousValue={dashboardMetrics ? dashboardMetrics.totalClicks * 0.88 : undefined}
               format="number"
-              icon={<MousePointerClick className="h-4 w-4 text-muted-foreground" />}
+              icon={<MousePointerClick className="h-5 w-5 text-muted-foreground" />}
               loading={metricsLoading}
+              size="medium"
             />
             <MetricCard
               title="Click-Through Rate"
               value={dashboardMetrics?.averageCTR || 0}
               previousValue={dashboardMetrics ? dashboardMetrics.averageCTR * 0.92 : undefined}
               format="percentage"
-              icon={<BarChart3 className="h-4 w-4 text-muted-foreground" />}
+              icon={<BarChart3 className="h-5 w-5 text-muted-foreground" />}
               loading={metricsLoading}
+              size="medium"
             />
             <MetricCard
               title="Active Campaigns"
               value={dashboardMetrics?.activeCampaigns || 0}
               previousValue={dashboardMetrics ? dashboardMetrics.activeCampaigns - 2 : undefined}
               format="number"
-              icon={<Users className="h-4 w-4 text-muted-foreground" />}
+              icon={<Users className="h-5 w-5 text-muted-foreground" />}
               loading={metricsLoading}
+              size="medium"
             />
           </div>
 
           {/* Charts Section */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-            <Card className="col-span-4">
-              <CardHeader>
-                <CardTitle>Performance Overview</CardTitle>
-                <CardDescription>
+          <div className="grid gap-6 lg:grid-cols-7">
+            <Card className="col-span-full lg:col-span-4 hover:shadow-lg transition-shadow duration-200">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-lg font-semibold">Performance Overview</CardTitle>
+                <CardDescription className="text-sm text-muted-foreground">
                   Daily spend and ROAS trends over the last 30 days
                 </CardDescription>
               </CardHeader>
-              <CardContent className="h-[300px]">
+              <CardContent className="h-[350px] lg:h-[400px]">
                 {chartLoading ? (
                   <div className="flex items-center justify-center h-full">
                     <RefreshCw className="h-6 w-6 animate-spin mr-2" />
@@ -316,16 +360,16 @@ export function DashboardClient() {
                     data={chartData}
                     timeframe="30d" 
                     metric="spend" 
-                    height={250}
+                    height={300}
                   />
                 )}
               </CardContent>
             </Card>
             
-            <Card className="col-span-3">
-              <CardHeader>
-                <CardTitle>Top Campaigns</CardTitle>
-                <CardDescription>
+            <Card className="col-span-full lg:col-span-3 hover:shadow-lg transition-shadow duration-200">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-lg font-semibold">Top Campaigns</CardTitle>
+                <CardDescription className="text-sm text-muted-foreground">
                   Ranked by ROAS performance
                 </CardDescription>
               </CardHeader>

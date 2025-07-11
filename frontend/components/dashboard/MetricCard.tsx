@@ -92,42 +92,100 @@ export function MetricCard({
   const config = currentTrend ? trendConfig[currentTrend] : null
   const TrendIcon = config?.icon
 
+  // Size-specific styling
+  const sizeConfig = {
+    small: {
+      card: 'p-4',
+      header: 'pb-2',
+      title: 'text-sm',
+      value: 'text-xl',
+      trend: 'text-xs',
+      icon: 'w-4 h-4',
+      skeleton: { value: 'h-6 w-20', trend: 'h-3 w-24' }
+    },
+    medium: {
+      card: 'p-4 md:p-6',
+      header: 'pb-3',
+      title: 'text-sm md:text-base',
+      value: 'text-2xl md:text-3xl',
+      trend: 'text-sm',
+      icon: 'w-5 h-5',
+      skeleton: { value: 'h-8 w-24', trend: 'h-4 w-32' }
+    },
+    large: {
+      card: 'p-6 md:p-8',
+      header: 'pb-4',
+      title: 'text-base md:text-lg',
+      value: 'text-3xl md:text-4xl',
+      trend: 'text-sm md:text-base',
+      icon: 'w-6 h-6',
+      skeleton: { value: 'h-10 w-32', trend: 'h-5 w-40' }
+    }
+  }
+
+  const currentSizeConfig = sizeConfig[size]
+
   return (
     <Card className={cn(
-      "transition-all duration-200 hover:shadow-md",
-      config && percentageChange !== null && `${config.bgColor} ${config.borderColor} border`
+      "transition-all duration-300 hover:shadow-lg hover:scale-[1.02] cursor-pointer",
+      "border-0 shadow-md bg-gradient-to-br from-white to-gray-50/50",
+      "dark:from-gray-900 dark:to-gray-800/50 dark:shadow-gray-900/20",
+      config && percentageChange !== null && `${config.bgColor} ${config.borderColor} border`,
+      currentSizeConfig.card
     )}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
-        {icon}
+      <CardHeader className={cn(
+        "flex flex-row items-center justify-between space-y-0",
+        currentSizeConfig.header
+      )}>
+        <CardTitle className={cn(
+          "font-semibold text-muted-foreground tracking-tight",
+          currentSizeConfig.title
+        )}>
+          {title}
+        </CardTitle>
+        <div className={cn(
+          "text-muted-foreground/70 transition-colors duration-200",
+          "group-hover:text-muted-foreground",
+          currentSizeConfig.icon
+        )}>
+          {icon}
+        </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-0">
         {loading ? (
           <>
-            <Skeleton className="h-8 w-24 mb-2" />
-            <Skeleton className="h-4 w-32" />
+            <Skeleton className={cn(currentSizeConfig.skeleton.value, "mb-2")} />
+            <Skeleton className={currentSizeConfig.skeleton.trend} />
           </>
         ) : (
           <>
-            <div className="text-2xl font-bold">{formattedValue()}</div>
+            <div className={cn(
+              "font-bold text-gray-900 dark:text-gray-100 tracking-tight",
+              currentSizeConfig.value
+            )}>
+              {formattedValue()}
+            </div>
             {percentageChange !== null && config && (
               <div className={cn(
-                "flex items-center gap-1 text-sm mt-1",
+                "flex items-center gap-1 mt-2",
+                currentSizeConfig.trend,
                 config.textColor
               )}>
-                <div className="flex items-center">
+                <div className="flex items-center gap-1">
                   {TrendIcon && (
                     <TrendIcon 
                       className="w-4 h-4" 
                       aria-label={`${config.ariaLabel} of ${Math.abs(percentageChange).toFixed(1)}%`}
                     />
                   )}
-                  <span className="font-medium">
+                  <span className="font-semibold">
                     {percentageChange > 0 && '+'}
                     {percentageChange.toFixed(1)}%
                   </span>
                 </div>
-                <span className="text-muted-foreground">vs last period</span>
+                <span className="text-muted-foreground/70 text-xs md:text-sm">
+                  vs last period
+                </span>
               </div>
             )}
           </>

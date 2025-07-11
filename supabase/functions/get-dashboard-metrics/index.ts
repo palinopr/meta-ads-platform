@@ -191,7 +191,7 @@ serve(async (req) => {
     let adAccounts
     if (account_ids && account_ids.length > 0) {
       // Use specific accounts if provided
-      const { data, error } = await supabaseClient
+      const { data, error } = await supabaseAdmin
         .from('meta_ad_accounts')
         .select('account_id, account_name, is_active')
         .in('account_id', account_ids)
@@ -206,7 +206,7 @@ serve(async (req) => {
       adAccounts = data
     } else {
       // Otherwise use all user's accounts
-      const { data, error } = await supabaseClient
+      const { data, error } = await supabaseAdmin
         .from('meta_ad_accounts')
         .select('account_id, account_name, is_active')
         .eq('user_id', user.id)
