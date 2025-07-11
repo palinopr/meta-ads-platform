@@ -119,6 +119,39 @@ function getPreviousDatePreset(currentPreset: string): string | null {
   return presetMap[currentPreset] || null
 }
 
+async function fetchMetaAdAccounts(accessToken: string, accountIds?: string[]): Promise<Array<{account_id: string, account_name: string, is_active: boolean}>> {
+  try {
+    // Fetch user's ad accounts directly from Meta API
+    const url = `https://graph.facebook.com/v19.0/me/adaccounts?fields=id,name,account_status&access_token=${accessToken}&limit=1000`
+    
+    const response = await fetch(url)
+    if (!response.ok) {
+      console.error(`Meta API error for ad accounts: ${response.status}`)
+      throw new Error(`Meta API error: ${response.status}`)
+    }
+    
+    const data = await response.json()
+    const allAccounts = (data.data || []).map((account: any) => ({
+      account_id: account.id.replace('act_', ''), // Remove act_ prefix
+      account_name: account.name,
+      is_active: account.account_status === 1 // 1 = ACTIVE, 2 = DISABLED, etc.
+    }))
+    
+    // Filter by specific account IDs if provided
+    if (accountIds && accountIds.length > 0) {
+      const filteredAccounts = allAccounts.filter(account => accountIds.includes(account.account_id))
+      console.log(`Filtered ${filteredAccounts.length} accounts from ${allAccounts.length} total accounts`)
+      return filteredAccounts
+    }
+    
+    console.log(`Fetched ${allAccounts.length} ad accounts directly from Meta API`)
+    return allAccounts
+  } catch (error) {
+    console.error('Error fetching Meta ad accounts:', error)
+    throw error
+  }
+}
+
 async function fetchMetaCampaigns(accessToken: string, accountId: string): Promise<MetaCampaign[]> {
   const url = `https://graph.facebook.com/v19.0/act_${accountId}/campaigns?fields=id,name,status&access_token=${accessToken}`
   
@@ -187,37 +220,28 @@ serve(async (req) => {
       )
     }
 
-    // Get user's Meta ad accounts
+    // Get user's Meta ad accounts directly from Meta API (Direct API Pattern)
     let adAccounts
-    if (account_ids && account_ids.length > 0) {
-      // Use specific accounts if provided
-      const { data, error } = await supabaseAdmin
-        .from('meta_ad_accounts')
-        .select('account_id, account_name, is_active')
-        .in('account_id', account_ids)
-        .eq('user_id', user.id)
+    try {
+      console.log(`Fetching ad accounts from Meta API for user: ${user.id}`)
+      console.log(`Requested account IDs: ${account_ids ? account_ids.join(', ') : 'ALL'}`)
       
-      if (error || !data) {
+      adAccounts = await fetchMetaAdAccounts(profile.meta_access_token, account_ids)
+      
+      if (!adAccounts || adAccounts.length === 0) {
         return new Response(
-          JSON.stringify({ error: 'Invalid account IDs provided' }),
+          JSON.stringify({ error: 'No Meta ad accounts found or accessible with current permissions.' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
       }
-      adAccounts = data
-    } else {
-      // Otherwise use all user's accounts
-      const { data, error } = await supabaseAdmin
-        .from('meta_ad_accounts')
-        .select('account_id, account_name, is_active')
-        .eq('user_id', user.id)
       
-      if (error || !data || data.length === 0) {
-        return new Response(
-          JSON.stringify({ error: 'No Meta ad accounts found. Please connect your Meta accounts.' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
-      }
-      adAccounts = data
+      console.log(`Processing ${adAccounts.length} ad accounts from Meta API`)
+    } catch (error) {
+      console.error('Error fetching ad accounts from Meta API:', error)
+      return new Response(
+        JSON.stringify({ error: 'Failed to fetch ad accounts from Meta API. Please check your Meta connection.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
     }
 
     // Initialize aggregation variables for current and previous periods
