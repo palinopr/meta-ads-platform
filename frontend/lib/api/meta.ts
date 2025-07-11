@@ -42,7 +42,7 @@ export interface MetaAPIResponse<T> {
 }
 
 // Helper function to convert date range to Meta API date preset
-function dateRangeToMetaPreset(dateRange?: { from: Date; to: Date }): string {
+function dateRangeToMetaPreset(dateRange?: { from: Date | undefined; to?: Date | undefined }): string {
   if (!dateRange?.from || !dateRange?.to) {
     return 'last_30d' // Default
   }
@@ -252,7 +252,7 @@ export class MetaAPI {
     }
   }
 
-  async getDashboardMetrics(accountIds?: string[], dateRange?: { from: Date; to: Date }): Promise<MetaAPIResponse<DashboardMetrics | null>> {
+  async getDashboardMetrics(accountIds?: string[], dateRange?: { from: Date | undefined; to?: Date | undefined }): Promise<MetaAPIResponse<DashboardMetrics | null>> {
     try {
       const datePreset = dateRangeToMetaPreset(dateRange);
       
@@ -281,7 +281,7 @@ export class MetaAPI {
     }
   }
 
-  async getChartData(accountId: string, dateRange?: { from: Date; to: Date }): Promise<MetaAPIResponse<ChartDataPoint[]>> {
+  async getChartData(accountId: string, dateRange?: { from: Date | undefined; to?: Date | undefined }): Promise<MetaAPIResponse<ChartDataPoint[]>> {
     try {
       const datePreset = dateRangeToMetaPreset(dateRange);
       
@@ -304,7 +304,7 @@ export class MetaAPI {
     }
   }
 
-  async getSparklineData(accountId: string, dateRange?: { from: Date; to: Date }): Promise<MetaAPIResponse<any>> {
+  async getSparklineData(accountId: string, dateRange?: { from: Date | undefined; to?: Date | undefined }): Promise<MetaAPIResponse<any>> {
     try {
       const datePreset = dateRangeToMetaPreset(dateRange);
       
@@ -331,7 +331,7 @@ export class MetaAPI {
     accountIds: string[], 
     sortBy: 'spend' | 'roas' | 'conversions' | 'revenue' | 'clicks' | 'impressions' | 'ctr' | 'cpc' | 'cpm' = 'roas',
     limit: number = 10,
-    dateRange?: { from: Date; to: Date },
+    dateRange?: { from: Date | undefined; to?: Date | undefined },
     statusFilter?: 'all' | 'active' | 'paused'
   ): Promise<MetaAPIResponse<TopCampaign[]>> {
     try {
