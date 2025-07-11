@@ -299,19 +299,40 @@ export class MetaAPI {
 }
 
 export interface DashboardMetrics {
+  // Main KPIs
   totalSpend: number;
+  totalRevenue: number;
+  averageRoas: number;
+  totalConversions: number;
+  
+  // Engagement metrics
   totalClicks: number;
   totalImpressions: number;
-  averageRoas: number;
-  activeCampaigns: number;
-  totalConversions: number;
   averageCTR: number;
   averageCPC: number;
+  averageCPM: number;
+  
+  // Campaign info
+  totalCampaigns: number;
+  activeCampaigns: number;
+  pausedCampaigns: number;
+  
+  // Performance changes (comparing with previous period)
   performanceChange: {
     spend: number;
+    revenue: number;
     roas: number;
+    conversions: number;
     ctr: number;
+    cpc: number;
   };
+  
+  // Account info
+  totalAccounts: number;
+  activeAccounts: number;
+  
+  // Metadata
+  dateRange: string;
   lastUpdated: string;
 }
 

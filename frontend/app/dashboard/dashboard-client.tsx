@@ -94,6 +94,7 @@ export function DashboardClient() {
       const response = await api.getDashboardMetrics([accountId])
       
       console.log('📊 Dashboard metrics response:', response)
+      console.log('📊 Raw response data:', JSON.stringify(response, null, 2))
       
       if (response.error) {
         console.error('❌ Dashboard metrics error:', response.error)
@@ -106,28 +107,14 @@ export function DashboardClient() {
         console.log('✅ Dashboard metrics loaded successfully:', response.data)
         setDashboardMetrics(response.data)
       } else {
-        // No data returned but no error - this might be a new account with no campaigns
-        setDashboardMetrics({
-          totalSpend: 0,
-          totalClicks: 0,
-          totalImpressions: 0,
-          averageRoas: 0,
-          activeCampaigns: 0,
-          totalConversions: 0,
-          averageCTR: 0,
-          averageCPC: 0,
-          performanceChange: {
-            spend: 0,
-            roas: 0,
-            ctr: 0,
-          },
-          lastUpdated: new Date().toISOString()
-        })
+        console.warn('⚠️ No data returned from dashboard metrics API')
+        setError('No data available. This might be a new account with no campaigns yet.')
+        setDashboardMetrics(null)
       }
       
     } catch (err) {
-      console.error('Failed to load metrics:', err)
-      setError('Failed to load campaign metrics. Please try again.')
+      console.error('❌ Failed to load metrics:', err)
+      setError(`Failed to load campaign metrics: ${err instanceof Error ? err.message : 'Unknown error'}`)
       setDashboardMetrics(null)
     } finally {
       setMetricsLoading(false)
@@ -318,8 +305,10 @@ export function DashboardClient() {
           <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
             <MetricCard
               title="Total Spend"
-              value={dashboardMetrics?.totalSpend || 0}
-              previousValue={dashboardMetrics ? dashboardMetrics.totalSpend * 0.85 : 0}
+              value={dashboardMetrics?.totalSpend ?? "No Data"}
+              previousValue={dashboardMetrics?.performanceChange ? 
+                dashboardMetrics.totalSpend * (1 - dashboardMetrics.performanceChange.spend / 100) : 
+                undefined}
               format="currency"
               icon={<DollarSign className="h-6 w-6 text-blue-500" />}
               loading={metricsLoading}
@@ -328,8 +317,10 @@ export function DashboardClient() {
             />
             <MetricCard
               title="ROAS"
-              value={dashboardMetrics?.averageRoas || 0}
-              previousValue={dashboardMetrics ? dashboardMetrics.averageRoas * 0.95 : 0}
+              value={dashboardMetrics?.averageRoas ?? "No Data"}
+              previousValue={dashboardMetrics?.performanceChange ? 
+                dashboardMetrics.averageRoas * (1 - dashboardMetrics.performanceChange.roas / 100) : 
+                undefined}
               format="number"
               icon={<TrendingUp className="h-6 w-6 text-green-500" />}
               loading={metricsLoading}
@@ -338,8 +329,10 @@ export function DashboardClient() {
             />
             <MetricCard
               title="Conversions"
-              value={dashboardMetrics?.totalConversions || 0}
-              previousValue={dashboardMetrics ? dashboardMetrics.totalConversions * 0.9 : 0}
+              value={dashboardMetrics?.totalConversions ?? "No Data"}
+              previousValue={dashboardMetrics?.performanceChange ? 
+                dashboardMetrics.totalConversions * (1 - dashboardMetrics.performanceChange.conversions / 100) : 
+                undefined}
               format="number"
               icon={<ShoppingCart className="h-6 w-6 text-purple-500" />}
               loading={metricsLoading}
@@ -348,8 +341,10 @@ export function DashboardClient() {
             />
             <MetricCard
               title="Cost Per Click"
-              value={dashboardMetrics?.averageCPC || 0}
-              previousValue={dashboardMetrics ? dashboardMetrics.averageCPC * 1.05 : 0}
+              value={dashboardMetrics?.averageCPC ?? "No Data"}
+              previousValue={dashboardMetrics?.performanceChange ? 
+                dashboardMetrics.averageCPC * (1 - dashboardMetrics.performanceChange.cpc / 100) : 
+                undefined}
               format="currency"
               icon={<Target className="h-6 w-6 text-orange-500" />}
               invertTrend={true}
@@ -363,8 +358,8 @@ export function DashboardClient() {
           <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
             <MetricCard
               title="Impressions"
-              value={dashboardMetrics?.totalImpressions || 0}
-              previousValue={dashboardMetrics ? dashboardMetrics.totalImpressions * 0.95 : undefined}
+              value={dashboardMetrics?.totalImpressions ?? "No Data"}
+              previousValue={undefined}
               format="number"
               icon={<Eye className="h-5 w-5 text-muted-foreground" />}
               loading={metricsLoading}
@@ -373,8 +368,8 @@ export function DashboardClient() {
             />
             <MetricCard
               title="Clicks"
-              value={dashboardMetrics?.totalClicks || 0}
-              previousValue={dashboardMetrics ? dashboardMetrics.totalClicks * 0.88 : undefined}
+              value={dashboardMetrics?.totalClicks ?? "No Data"}
+              previousValue={undefined}
               format="number"
               icon={<MousePointerClick className="h-5 w-5 text-muted-foreground" />}
               loading={metricsLoading}
@@ -383,8 +378,8 @@ export function DashboardClient() {
             />
             <MetricCard
               title="Click-Through Rate"
-              value={dashboardMetrics?.averageCTR || 0}
-              previousValue={dashboardMetrics ? dashboardMetrics.averageCTR * 0.92 : undefined}
+              value={dashboardMetrics?.averageCTR ?? "No Data"}
+              previousValue={undefined}
               format="percentage"
               icon={<BarChart3 className="h-5 w-5 text-muted-foreground" />}
               loading={metricsLoading}
@@ -393,8 +388,8 @@ export function DashboardClient() {
             />
             <MetricCard
               title="Active Campaigns"
-              value={dashboardMetrics?.activeCampaigns || 0}
-              previousValue={dashboardMetrics ? dashboardMetrics.activeCampaigns - 2 : undefined}
+              value={dashboardMetrics?.activeCampaigns ?? "No Data"}
+              previousValue={undefined}
               format="number"
               icon={<Users className="h-5 w-5 text-muted-foreground" />}
               loading={metricsLoading}
