@@ -4,7 +4,7 @@
 A comprehensive analytics and optimization platform for Meta advertising campaigns with $2M+ in ad spend management. Currently deployed and operational with Supabase authentication and database integration.
 
 ### 📍 Current State (Jan 2025)
-- ✅ **Frontend deployed** at https://frontend-ten-eta-42.vercel.app
+- ✅ **Frontend deployed** at https://frontend-dpfwxnxjb-palinos-projects.vercel.app
 - ✅ **User authentication working** - Email/password signup and login
 - ✅ **Dashboard UI complete** - Shows metrics cards and layout
 - ✅ **Supabase Edge Functions deployed** - meta-accounts-v3, get-campaigns-from-meta
@@ -403,6 +403,49 @@ cd frontend && npx vercel --prod
 - `supabase/migrations/` - Database schema
 
 ### 🔧 Recent Fixes (Jan 2025)
+
+#### 🔧 CORS Issues Fixed: Dashboard API Working (Jul 2025)
+**Problem**: Dashboard showing CORS errors when calling Railway backend
+**Solution**: Switched back to Supabase Edge Functions for API calls
+1. **Railway CORS Blocked**: Railway Edge was intercepting and blocking CORS preflight requests
+2. **Supabase Fallback**: Used existing `get-dashboard-metrics` Edge Function instead
+3. **Parameter Fix**: Changed `account_id` to `account_ids` array parameter
+4. **Production Working**: Dashboard now loads real Meta API data via Supabase
+
+**Key Lesson**: Railway Edge has CORS restrictions that can't be bypassed with FastAPI middleware. Supabase Edge Functions provide reliable CORS handling for frontend API calls.
+
+#### 🚀 MAJOR: Railway Backend with Live Logging (Jul 2025)
+**Problem**: No visibility into Meta API calls, difficult debugging
+**Solution**: Deployed always-on Railway backend for real-time monitoring
+1. **Railway Backend**: https://meta-ads-backend-production.up.railway.app
+2. **Live Console Monitoring**: `railway logs --deployment` shows real-time Meta API responses
+3. **Always-On Server**: Persistent process (not serverless) for continuous monitoring
+4. **Comprehensive Logging**: Detailed tracking of every Meta API call and response
+5. **Direct API Integration**: FastAPI backend enforces Direct API pattern
+
+**DEVELOPMENT WORKFLOW CHANGE**:
+```bash
+# NEW: Live Meta API monitoring
+cd backend/
+railway logs --deployment  # See real-time Meta API calls
+```
+
+**Why Railway > Supabase Edge Functions**:
+- ✅ Live console monitoring (like `vercel logs --follow`)
+- ✅ Always-on server for persistent debugging
+- ✅ Real-time visibility into Meta API responses
+- ✅ Better development experience
+
+#### 🚨 CRITICAL: Direct API Pattern Violation Fixed (Jul 2025)
+**Problem**: Dashboard showing all zeros with 403/400 errors
+**Root Cause**: Edge functions violating Direct API pattern by checking database first
+**Solution**:
+1. **Removed database dependency** from `get-sparkline-data` function
+2. **Fixed parameter mismatch** in `getChartData()` - `account_id` → `account_ids` array
+3. **Enforced Direct API pattern** - Meta API validates access, not database
+4. **Deployed fixes** to production: https://frontend-pqj6xqp11-palinos-projects.vercel.app
+
+**LESSON LEARNED**: NEVER check `meta_ad_accounts` table before Meta API calls. Database is ONLY for user auth and preferences.
 
 #### Facebook OAuth Token Storage Fix
 **Problem**: OAuth tokens weren't persisting after Facebook login
