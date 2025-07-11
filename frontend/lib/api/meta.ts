@@ -244,6 +244,24 @@ export class MetaAPI {
     }
   }
 
+  async getSparklineData(accountId: string): Promise<MetaAPIResponse<any>> {
+    try {
+      const { data, error } = await this.supabaseClient.functions.invoke('get-sparkline-data', {
+        body: { 
+          account_id: accountId
+        }
+      });
+
+      if (error) {
+        return { data: null, error: error.message };
+      }
+
+      return { data: data || null, success: true };
+    } catch (error: any) {
+      return { data: null, error: error.message };
+    }
+  }
+
   async getTopCampaigns(
     accountIds: string[], 
     sortBy: 'spend' | 'roas' | 'conversions' | 'revenue' | 'clicks' | 'impressions' | 'ctr' | 'cpc' | 'cpm' = 'roas',

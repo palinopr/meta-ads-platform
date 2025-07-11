@@ -36,6 +36,7 @@ export function DashboardClient() {
   const [metricsLoading, setMetricsLoading] = useState(false)
   const [dashboardMetrics, setDashboardMetrics] = useState<DashboardMetrics | null>(null)
   const [campaigns, setCampaigns] = useState<TopCampaign[]>([])
+  const [sparklineData, setSparklineData] = useState<any>(null)
   const [campaignsLoading, setCampaignsLoading] = useState(false)
 
   const supabase = createClient()
@@ -75,6 +76,7 @@ export function DashboardClient() {
         await loadMetrics(data[0].account_id)
         await loadChartData(data[0].account_id)
         await loadCampaigns([data[0].account_id])
+        await loadSparklineData(data[0].account_id)
       }
     } catch (err) {
       setError('Failed to load ad accounts. Please connect your Meta account.')
@@ -175,6 +177,27 @@ export function DashboardClient() {
     }
   }
 
+  const loadSparklineData = async (accountId: string) => {
+    try {
+      console.log('🔄 Loading sparkline data for account:', accountId)
+      
+      const response = await api.getSparklineData(accountId)
+      
+      if (response.error) {
+        console.error('❌ Sparkline data error:', response.error)
+        return
+      }
+      
+      if (response.data) {
+        console.log('✅ Sparkline data loaded successfully')
+        setSparklineData(response.data)
+      }
+      
+    } catch (err) {
+      console.error('Failed to load sparkline data:', err)
+    }
+  }
+
   const syncData = async () => {
     if (!selectedAccount) return
 
@@ -192,6 +215,9 @@ export function DashboardClient() {
       
       // Step 3: Refresh campaigns
       await loadCampaigns([selectedAccount])
+      
+      // Step 4: Refresh sparkline data
+      await loadSparklineData(selectedAccount)
       
       // Data sync completed
       
@@ -239,6 +265,7 @@ export function DashboardClient() {
                   await loadMetrics(e.target.value)
                   await loadChartData(e.target.value)
                   await loadCampaigns([e.target.value])
+                  await loadSparklineData(e.target.value)
                 }}
               >
                 {accounts.map(account => (
@@ -314,6 +341,8 @@ export function DashboardClient() {
               loading={metricsLoading}
               size="large"
               className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border-blue-200 dark:border-blue-800"
+              showSparkline={true}
+              sparklineData={sparklineData?.totalSpend}
             />
             <MetricCard
               title="ROAS"
@@ -326,6 +355,8 @@ export function DashboardClient() {
               loading={metricsLoading}
               size="large"
               className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 border-green-200 dark:border-green-800"
+              showSparkline={true}
+              sparklineData={sparklineData?.averageRoas}
             />
             <MetricCard
               title="Conversions"
@@ -338,6 +369,8 @@ export function DashboardClient() {
               loading={metricsLoading}
               size="large"
               className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 border-purple-200 dark:border-purple-800"
+              showSparkline={true}
+              sparklineData={sparklineData?.totalConversions}
             />
             <MetricCard
               title="Cost Per Click"
@@ -351,6 +384,8 @@ export function DashboardClient() {
               loading={metricsLoading}
               size="large"
               className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 border-orange-200 dark:border-orange-800"
+              showSparkline={true}
+              sparklineData={sparklineData?.averageCPC}
             />
           </div>
 

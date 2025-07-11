@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatCurrency, formatNumber, formatPercentage, calculatePercentageChange, cn } from "@/lib/utils"
 import { ArrowUpIcon, ArrowDownIcon, MinusIcon } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Sparkline } from "./Sparkline"
 
 interface MetricCardProps {
   title: string
@@ -16,6 +17,11 @@ interface MetricCardProps {
   invertTrend?: boolean // For metrics where down is good (e.g., CPC, CPA)
   size?: 'small' | 'medium' | 'large'
   className?: string
+  sparklineData?: Array<{
+    date: string
+    value: number
+  }>
+  showSparkline?: boolean
 }
 
 export function MetricCard({ 
@@ -28,7 +34,9 @@ export function MetricCard({
   loading = false,
   invertTrend = false,
   size = 'medium',
-  className
+  className,
+  sparklineData,
+  showSparkline = false
 }: MetricCardProps) {
   const formattedValue = () => {
     if (typeof value === 'string') return value
@@ -170,6 +178,20 @@ export function MetricCard({
             )}>
               {formattedValue()}
             </div>
+            
+            {/* Sparkline Chart */}
+            {showSparkline && sparklineData && sparklineData.length > 0 && (
+              <div className="mt-3 mb-2">
+                <Sparkline 
+                  data={sparklineData}
+                  color={config?.textColor.includes('green') ? '#10b981' : 
+                         config?.textColor.includes('red') ? '#ef4444' : '#3b82f6'}
+                  height={size === 'large' ? 50 : size === 'medium' ? 40 : 30}
+                  className="w-full"
+                />
+              </div>
+            )}
+            
             {percentageChange !== null && config && (
               <div className={cn(
                 "flex items-center gap-1 mt-2",
