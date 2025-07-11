@@ -75,13 +75,18 @@ async function fetchMetaInsights(accessToken: string, accountId: string, datePre
   // Fetch current period
   const currentUrl = `https://graph.facebook.com/v19.0/act_${accountId}/insights?fields=${fields}&date_preset=${datePreset}&access_token=${accessToken}`
   
+  console.log(`🔍 Fetching insights for account ${accountId} with date preset: ${datePreset}`)
+  console.log(`🌐 Meta API URL: ${currentUrl.replace(/access_token=[^&]*/, 'access_token=***')}`)
+  
   const currentResponse = await fetch(currentUrl)
   if (!currentResponse.ok) {
-    console.error(`Meta API error for account ${accountId}: ${currentResponse.status}`)
+    const errorText = await currentResponse.text()
+    console.error(`❌ Meta API error for account ${accountId}: ${currentResponse.status} - ${errorText}`)
     throw new Error(`Meta API error: ${currentResponse.status}`)
   }
   
   const currentData = await currentResponse.json()
+  console.log(`📊 Current period insights for account ${accountId}:`, currentData)
   
   // Fetch previous period for comparison
   let previousData = { data: [] }
@@ -277,7 +282,8 @@ serve(async (req) => {
     // Process each account with direct Meta API calls
     for (const account of adAccounts) {
       try {
-        console.log(`Fetching data for account: ${account.account_id}`)
+        console.log(`📊 Processing account: ${account.account_id} (${account.account_name})`)
+        console.log(`🔍 Date preset: ${date_preset}`)
         
         // Track active accounts
         if (account.is_active) {
@@ -290,6 +296,8 @@ serve(async (req) => {
           account.account_id,
           date_preset
         )
+        
+        console.log(`📈 Retrieved ${currentInsights.length} current insights for account ${account.account_id}`)
         
         // Fetch campaigns directly from Meta API
         const campaigns = await fetchMetaCampaigns(profile.meta_access_token, account.account_id)
