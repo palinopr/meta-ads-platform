@@ -1,5 +1,11 @@
 # Technical Context
 
+## Session Management & Development Workflow
+- **Session Startup Guide**: START_NEW_SESSION.md - Dynamic task discovery system
+- **Rule Files**: .clinerules/.clinerules.md (XML rules) + .clinerules/rules.md (project rules)
+- **Current Tasks**: Always check DEVELOPMENT_PLAN.md "Current Focus" section
+- **Memory Bank Updates**: Required after any significant work or discovery
+
 ## Technologies Used
 
 ### Frontend Stack

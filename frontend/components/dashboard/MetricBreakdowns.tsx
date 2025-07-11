@@ -67,7 +67,7 @@ interface BreakdownData {
 }
 
 interface MetricBreakdownsProps {
-  data?: BreakdownData
+  data: BreakdownData
   loading?: boolean
 }
 
@@ -76,48 +76,6 @@ export function MetricBreakdowns({
   loading = false
 }: MetricBreakdownsProps) {
   const [activeTab, setActiveTab] = useState('demographics')
-
-  // Mock breakdown data
-  const mockData: BreakdownData = {
-    demographics: {
-      age: [
-        { range: '18-24', spend: 2500, roas: 2.8, percentage: 15 },
-        { range: '25-34', spend: 4200, roas: 3.5, percentage: 35 },
-        { range: '35-44', spend: 3800, roas: 3.2, percentage: 28 },
-        { range: '45-54', spend: 1800, roas: 2.9, percentage: 15 },
-        { range: '55+', spend: 900, roas: 2.4, percentage: 7 }
-      ],
-      gender: [
-        { type: 'Female', spend: 7200, roas: 3.4, percentage: 58 },
-        { type: 'Male', spend: 5200, roas: 2.9, percentage: 42 }
-      ]
-    },
-    devices: [
-      { type: 'Mobile', spend: 8500, clicks: 3200, impressions: 95000, roas: 3.4, percentage: 68 },
-      { type: 'Desktop', spend: 3200, clicks: 980, impressions: 28000, roas: 2.8, percentage: 26 },
-      { type: 'Tablet', spend: 800, clicks: 220, impressions: 8500, roas: 2.2, percentage: 6 }
-    ],
-    placements: [
-      { name: 'Facebook Feed', spend: 5500, ctr: 3.2, cpc: 1.85, percentage: 44 },
-      { name: 'Instagram Feed', spend: 3200, ctr: 2.8, cpc: 2.10, percentage: 26 },
-      { name: 'Stories', spend: 2100, ctr: 4.1, cpc: 1.65, percentage: 17 },
-      { name: 'Reels', spend: 1600, ctr: 3.8, cpc: 1.75, percentage: 13 }
-    ],
-    geography: [
-      { country: 'United Kingdom', spend: 6500, roas: 3.5, clicks: 2400, percentage: 52 },
-      { country: 'United States', spend: 3200, roas: 2.9, clicks: 1200, percentage: 26 },
-      { country: 'Canada', spend: 1500, roas: 3.1, clicks: 580, percentage: 12 },
-      { country: 'Australia', spend: 1200, roas: 2.7, clicks: 420, percentage: 10 }
-    ],
-    timeOfDay: [
-      { hour: '00-06', spend: 400, clicks: 120, roas: 2.1 },
-      { hour: '06-12', spend: 2800, clicks: 950, roas: 3.2 },
-      { hour: '12-18', spend: 4200, clicks: 1580, roas: 3.6 },
-      { hour: '18-24', spend: 5100, clicks: 1750, roas: 3.4 }
-    ]
-  }
-
-  const breakdownData = data || mockData
 
   const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#84cc16']
 
@@ -194,7 +152,7 @@ export function MetricBreakdowns({
                 <ResponsiveContainer width="100%" height={200}>
                   <PieChart>
                     <Pie
-                      data={breakdownData.demographics.age}
+                      data={data.demographics.age}
                       cx="50%"
                       cy="50%"
                       labelLine={false}
@@ -203,7 +161,7 @@ export function MetricBreakdowns({
                       dataKey="percentage"
                       label={({ range, percentage }) => `${range}: ${percentage}%`}
                     >
-                      {breakdownData.demographics.age.map((entry, index) => (
+                      {data.demographics.age.map((entry, index) => (
                         <Cell key={`age-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
@@ -216,7 +174,7 @@ export function MetricBreakdowns({
               <div>
                 <h4 className="text-sm font-medium mb-4">Gender Distribution</h4>
                 <ResponsiveContainer width="100%" height={200}>
-                  <BarChart data={breakdownData.demographics.gender}>
+                  <BarChart data={data.demographics.gender}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="type" />
                     <YAxis />
@@ -235,7 +193,7 @@ export function MetricBreakdowns({
 
           <TabsContent value="devices" className="space-y-4">
             <div className="grid gap-4">
-              {breakdownData.devices.map((device, index) => (
+              {data.devices.map((device, index) => (
                 <div key={device.type} className="flex items-center justify-between p-4 border rounded-lg">
                   <div className="flex items-center gap-3">
                     {getDeviceIcon(device.type)}
@@ -259,7 +217,7 @@ export function MetricBreakdowns({
 
           <TabsContent value="placements" className="space-y-4">
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={breakdownData.placements}>
+              <BarChart data={data.placements}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" />
                 <YAxis />
@@ -271,7 +229,7 @@ export function MetricBreakdowns({
 
           <TabsContent value="geography" className="space-y-4">
             <div className="grid gap-4">
-              {breakdownData.geography.map((country, index) => (
+              {data.geography.map((country, index) => (
                 <div key={country.country} className="flex items-center justify-between p-4 border rounded-lg">
                   <div className="flex items-center gap-3">
                     <MapPin className="h-4 w-4" />
@@ -300,7 +258,7 @@ export function MetricBreakdowns({
                 Performance by Time of Day
               </h4>
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={breakdownData.timeOfDay}>
+                <BarChart data={data.timeOfDay}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="hour" />
                   <YAxis />

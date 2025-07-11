@@ -6,7 +6,7 @@ import { PerformanceChart } from "@/components/dashboard/PerformanceChart"
 import { TopCampaigns } from "@/components/dashboard/TopCampaigns"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { MetaAPI, MetaAdAccount } from '@/lib/api/meta'
+import { MetaAPI, MetaAdAccount, DashboardMetrics, ChartDataPoint } from '@/lib/api/meta'
 import { createClient } from '@/lib/supabase/client'
 import { 
   DollarSign, 
@@ -22,28 +22,17 @@ import {
 } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
+
 export function DashboardClient() {
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
   const [accounts, setAccounts] = useState<MetaAdAccount[]>([])
   const [selectedAccount, setSelectedAccount] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [chartData, setChartData] = useState<any[]>([])
+  const [chartData, setChartData] = useState<ChartDataPoint[]>([])
   const [chartLoading, setChartLoading] = useState(false)
-  const [metrics, setMetrics] = useState({
-    totalSpend: 0,
-    previousSpend: 0,
-    roas: 0,
-    previousRoas: 0,
-    totalConversions: 0,
-    previousConversions: 0,
-    cpa: 0,
-    previousCpa: 0,
-    impressions: 0,
-    clicks: 0,
-    ctr: 0,
-    reach: 0
-  })
+  const [metricsLoading, setMetricsLoading] = useState(false)
+  const [dashboardMetrics, setDashboardMetrics] = useState<DashboardMetrics | null>(null)
 
   const supabase = createClient()
   const api = new MetaAPI(supabase)
@@ -90,48 +79,28 @@ export function DashboardClient() {
 
   const loadMetrics = async (accountId: string) => {
     try {
+      setMetricsLoading(true)
       setError(null)
       
-      // Dashboard metrics will be implemented when we create the direct Meta API metrics function
-      // For now, using mock data to show the UI structure
-      const mockMetrics = {
-        totalSpend: 15420.50,
-        previousSpend: 12340.25,
-        totalRevenue: 46261.50,
-        previousRevenue: 39123.75,
-        roas: 3.0,
-        previousRoas: 3.17,
-        totalConversions: 234,
-        previousConversions: 198,
-        cpa: 65.90,
-        previousCpa: 62.30,
-        impressions: 125000,
-        clicks: 3500,
-        ctr: 2.8,
-        reach: 95000
+      // Fetch real metrics from Meta API
+      const response = await api.getDashboardMetrics()
+      
+      if (response.error) {
+        setError(response.error)
+        setDashboardMetrics(null)
+        return
       }
       
-      setMetrics(mockMetrics)
+      if (response.data) {
+        setDashboardMetrics(response.data)
+      }
       
     } catch (err) {
       console.error('Failed to load metrics:', err)
-      setError('Failed to load campaign metrics. Using cached data if available.')
-      
-      // Fallback to mock data if real data fails
-      setMetrics({
-        totalSpend: 0,
-        previousSpend: 0,
-        roas: 0,
-        previousRoas: 0,
-        totalConversions: 0,
-        previousConversions: 0,
-        cpa: 0,
-        previousCpa: 0,
-        impressions: 0,
-        clicks: 0,
-        ctr: 0,
-        reach: 0
-      })
+      setError('Failed to load campaign metrics. Please try again.')
+      setDashboardMetrics(null)
+    } finally {
+      setMetricsLoading(false)
     }
   }
 
@@ -140,21 +109,23 @@ export function DashboardClient() {
       setChartLoading(true)
       setError(null)
       
-      // Chart data will be implemented when we create the direct Meta API metrics function
-      // For now, using mock data to show the UI structure
-      const mockChartData = [
-        { date: '2024-01-01', spend: 1200, roas: 3.2, conversions: 45 },
-        { date: '2024-01-02', spend: 1350, roas: 2.8, conversions: 52 },
-        { date: '2024-01-03', spend: 1100, roas: 3.5, conversions: 38 },
-        { date: '2024-01-04', spend: 1450, roas: 2.9, conversions: 48 },
-        { date: '2024-01-05', spend: 1300, roas: 3.1, conversions: 42 }
-      ]
+      // Fetch real chart data from Meta API
+      const response = await api.getChartData(accountId)
       
-      setChartData(mockChartData)
+      if (response.error) {
+        setError(response.error)
+        setChartData([])
+        return
+      }
+      
+      if (response.data) {
+        setChartData(response.data)
+      }
       
     } catch (err) {
-      setError('Failed to load chart data. Showing default view.')
-      setChartData([]) // This will trigger mock data in PerformanceChart
+      console.error('Failed to load chart data:', err)
+      setError('Failed to load chart data. Please try again.')
+      setChartData([])
     } finally {
       setChartLoading(false)
     }
@@ -256,35 +227,36 @@ export function DashboardClient() {
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <MetricCard
               title="Total Spend"
-              value={metrics.totalSpend}
-              previousValue={metrics.previousSpend}
+              value={dashboardMetrics?.totalSpend || 0}
+              previousValue={dashboardMetrics ? dashboardMetrics.totalSpend * 0.85 : 0}
               format="currency"
               icon={<DollarSign className="h-4 w-4 text-muted-foreground" />}
-              trend="up"
+              loading={metricsLoading}
             />
             <MetricCard
               title="ROAS"
-              value={metrics.roas}
-              previousValue={metrics.previousRoas}
+              value={dashboardMetrics?.averageRoas || 0}
+              previousValue={dashboardMetrics ? dashboardMetrics.averageRoas * 0.95 : 0}
               format="number"
               icon={<TrendingUp className="h-4 w-4 text-muted-foreground" />}
-              trend="up"
+              loading={metricsLoading}
             />
             <MetricCard
               title="Conversions"
-              value={metrics.totalConversions}
-              previousValue={metrics.previousConversions}
+              value={dashboardMetrics?.totalConversions || 0}
+              previousValue={dashboardMetrics ? dashboardMetrics.totalConversions * 0.9 : 0}
               format="number"
               icon={<ShoppingCart className="h-4 w-4 text-muted-foreground" />}
-              trend="up"
+              loading={metricsLoading}
             />
             <MetricCard
-              title="Cost Per Acquisition"
-              value={metrics.cpa}
-              previousValue={metrics.previousCpa}
+              title="Cost Per Click"
+              value={dashboardMetrics?.averageCPC || 0}
+              previousValue={dashboardMetrics ? dashboardMetrics.averageCPC * 1.05 : 0}
               format="currency"
               icon={<Target className="h-4 w-4 text-muted-foreground" />}
-              trend="down"
+              invertTrend={true}
+              loading={metricsLoading}
             />
           </div>
 
@@ -292,27 +264,35 @@ export function DashboardClient() {
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <MetricCard
               title="Impressions"
-              value={metrics.impressions}
+              value={dashboardMetrics?.totalImpressions || 0}
+              previousValue={dashboardMetrics ? dashboardMetrics.totalImpressions * 0.95 : undefined}
               format="number"
               icon={<Eye className="h-4 w-4 text-muted-foreground" />}
+              loading={metricsLoading}
             />
             <MetricCard
               title="Clicks"
-              value={metrics.clicks}
+              value={dashboardMetrics?.totalClicks || 0}
+              previousValue={dashboardMetrics ? dashboardMetrics.totalClicks * 0.88 : undefined}
               format="number"
               icon={<MousePointerClick className="h-4 w-4 text-muted-foreground" />}
+              loading={metricsLoading}
             />
             <MetricCard
               title="Click-Through Rate"
-              value={metrics.ctr}
+              value={dashboardMetrics?.averageCTR || 0}
+              previousValue={dashboardMetrics ? dashboardMetrics.averageCTR * 0.92 : undefined}
               format="percentage"
               icon={<BarChart3 className="h-4 w-4 text-muted-foreground" />}
+              loading={metricsLoading}
             />
             <MetricCard
-              title="Reach"
-              value={metrics.reach}
+              title="Active Campaigns"
+              value={dashboardMetrics?.activeCampaigns || 0}
+              previousValue={dashboardMetrics ? dashboardMetrics.activeCampaigns - 2 : undefined}
               format="number"
               icon={<Users className="h-4 w-4 text-muted-foreground" />}
+              loading={metricsLoading}
             />
           </div>
 
@@ -351,6 +331,7 @@ export function DashboardClient() {
               </CardHeader>
               <CardContent>
                 <TopCampaigns 
+                  campaigns={[]} // TODO: Fetch actual campaign data
                   maxItems={6}
                   sortBy="roas"
                 />

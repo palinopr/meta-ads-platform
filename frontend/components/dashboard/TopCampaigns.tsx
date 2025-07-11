@@ -20,54 +20,10 @@ interface Campaign {
 }
 
 interface TopCampaignsProps {
-  campaigns?: Campaign[]
+  campaigns: Campaign[]
   maxItems?: number
   sortBy?: 'spend' | 'roas' | 'conversions' | 'revenue'
-}
-
-// Generate mock campaign data - in production this will come from real Meta API
-const generateMockCampaigns = (): Campaign[] => {
-  const campaignNames = [
-    'Q1 Brand Awareness',
-    'Holiday Sale Retargeting', 
-    'Lead Generation - Tech',
-    'Video Views Campaign',
-    'Conversion Optimization',
-    'Lookalike Audience Test',
-    'Geographic Expansion',
-    'Product Launch Campaign',
-    'Email Signup Campaign',
-    'App Install Campaign'
-  ]
-
-  const objectives = [
-    'REACH',
-    'CONVERSIONS', 
-    'TRAFFIC',
-    'VIDEO_VIEWS',
-    'LEAD_GENERATION',
-    'APP_INSTALLS'
-  ]
-
-  return campaignNames.map((name, index) => {
-    const spend = 500 + Math.random() * 2000 // $500-2500
-    const conversions = 5 + Math.random() * 25 // 5-30 conversions
-    const revenue = conversions * (60 + Math.random() * 80) // $60-140 per conversion
-    const roas = revenue / spend
-    
-    return {
-      id: `campaign_${index + 1}`,
-      name,
-      status: Math.random() > 0.2 ? 'ACTIVE' : Math.random() > 0.5 ? 'PAUSED' : 'COMPLETED',
-      spend: Math.round(spend),
-      revenue: Math.round(revenue),
-      roas: Number(roas.toFixed(2)),
-      conversions: Math.round(conversions),
-      objective: objectives[Math.floor(Math.random() * objectives.length)],
-      trend: Math.random() > 0.6 ? 'up' : Math.random() > 0.3 ? 'down' : 'flat',
-      changePercent: Number((Math.random() * 40 - 20).toFixed(1)) // -20% to +20%
-    }
-  })
+  loading?: boolean
 }
 
 const formatCurrency = (value: number) => {
@@ -115,11 +71,12 @@ const getTrendColor = (trend: Campaign['trend']) => {
 export function TopCampaigns({ 
   campaigns, 
   maxItems = 8, 
-  sortBy = 'roas' 
+  sortBy = 'roas',
+  loading = false
 }: TopCampaignsProps) {
   
   const sortedCampaigns = useMemo(() => {
-    const data = campaigns || generateMockCampaigns()
+    const data = campaigns
     
     const sorted = [...data].sort((a, b) => {
       switch (sortBy) {
@@ -255,7 +212,12 @@ export function TopCampaigns({
         </div>
       ))}
       
-      {sortedCampaigns.length === 0 && (
+      {loading && (
+        <div className="text-center py-8 text-gray-500">
+          <p>Loading campaigns...</p>
+        </div>
+      )}
+      {!loading && sortedCampaigns.length === 0 && (
         <div className="text-center py-8 text-gray-500">
           <p>No campaigns data available</p>
           <p className="text-xs mt-1">Sync your Meta account to see campaign performance</p>

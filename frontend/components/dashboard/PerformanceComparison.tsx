@@ -37,49 +37,18 @@ interface ComparisonData {
 }
 
 interface PerformanceComparisonProps {
-  data?: ComparisonData[]
+  data: ComparisonData[]
   loading?: boolean
   comparisonType?: 'period' | 'campaign' | 'account'
 }
 
 export function PerformanceComparison({ 
-  data = [], 
+  data, 
   loading = false,
   comparisonType = 'period'
 }: PerformanceComparisonProps) {
   const [metric, setMetric] = useState<'spend' | 'roas' | 'clicks' | 'impressions' | 'ctr'>('spend')
   const [viewType, setViewType] = useState<'chart' | 'table'>('chart')
-
-  // Mock comparison data
-  const mockData: ComparisonData[] = [
-    {
-      date: '2025-01-01',
-      current: { spend: 1200, roas: 3.2, clicks: 450, impressions: 15000, ctr: 3.0 },
-      previous: { spend: 1100, roas: 2.8, clicks: 420, impressions: 14500, ctr: 2.9 }
-    },
-    {
-      date: '2025-01-02',
-      current: { spend: 1350, roas: 3.5, clicks: 520, impressions: 17200, ctr: 3.02 },
-      previous: { spend: 1250, roas: 3.1, clicks: 480, impressions: 16000, ctr: 3.0 }
-    },
-    {
-      date: '2025-01-03',
-      current: { spend: 1100, roas: 2.9, clicks: 380, impressions: 13500, ctr: 2.81 },
-      previous: { spend: 1200, roas: 3.0, clicks: 400, impressions: 14000, ctr: 2.86 }
-    },
-    {
-      date: '2025-01-04',
-      current: { spend: 1450, roas: 3.8, clicks: 580, impressions: 19000, ctr: 3.05 },
-      previous: { spend: 1300, roas: 3.3, clicks: 520, impressions: 17500, ctr: 2.97 }
-    },
-    {
-      date: '2025-01-05',
-      current: { spend: 1300, roas: 3.4, clicks: 490, impressions: 16800, ctr: 2.92 },
-      previous: { spend: 1250, roas: 3.2, clicks: 470, impressions: 16200, ctr: 2.90 }
-    }
-  ]
-
-  const comparisonData = data.length > 0 ? data : mockData
 
   const calculateChange = (current: number, previous: number) => {
     if (previous === 0) return 0
@@ -117,8 +86,9 @@ export function PerformanceComparison({
 
   // Calculate overall performance changes
   const calculateOverallChange = () => {
-    const totalCurrent = comparisonData.reduce((sum, item) => sum + item.current[metric], 0)
-    const totalPrevious = comparisonData.reduce((sum, item) => sum + item.previous[metric], 0)
+    if (!data || data.length === 0) return 0
+    const totalCurrent = data.reduce((sum, item) => sum + item.current[metric], 0)
+    const totalPrevious = data.reduce((sum, item) => sum + item.previous[metric], 0)
     return calculateChange(totalCurrent, totalPrevious)
   }
 
@@ -133,9 +103,17 @@ export function PerformanceComparison({
       )
     }
 
+    if (!data || data.length === 0) {
+      return (
+        <div className="h-[300px] flex items-center justify-center">
+          <div className="text-muted-foreground">No comparison data available</div>
+        </div>
+      )
+    }
+
     return (
       <ResponsiveContainer width="100%" height={300}>
-        <ComposedChart data={comparisonData}>
+        <ComposedChart data={data}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis 
             dataKey="date" 
@@ -262,7 +240,7 @@ export function PerformanceComparison({
                     </tr>
                   </thead>
                   <tbody>
-                    {comparisonData.map((item, index) => {
+                    {data.map((item, index) => {
                       const change = calculateChange(item.current[metric], item.previous[metric])
                       return (
                         <tr key={index} className="border-b">

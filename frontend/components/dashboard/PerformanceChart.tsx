@@ -25,34 +25,11 @@ interface ChartDataPoint {
 }
 
 interface PerformanceChartProps {
-  data?: ChartDataPoint[]
+  data: ChartDataPoint[]
   timeframe?: '7d' | '30d' | '90d'
   metric?: 'spend' | 'roas' | 'conversions' | 'cpc'
   height?: number
-}
-
-// Generate mock daily data for the past 30 days
-const generateMockData = (days: number = 30): ChartDataPoint[] => {
-  const data: ChartDataPoint[] = []
-  
-  for (let i = days - 1; i >= 0; i--) {
-    const date = format(subDays(new Date(), i), 'yyyy-MM-dd')
-    const baseSpend = 1200 + Math.random() * 800 // $1200-2000 daily spend
-    const baseConversions = 15 + Math.random() * 10 // 15-25 conversions
-    const revenue = baseConversions * (80 + Math.random() * 40) // $80-120 per conversion
-    
-    data.push({
-      date,
-      spend: Math.round(baseSpend),
-      revenue: Math.round(revenue),
-      roas: Number((revenue / baseSpend).toFixed(2)),
-      conversions: Math.round(baseConversions),
-      cpc: Number((baseSpend / (baseConversions * 5)).toFixed(2)), // Assuming 5 clicks per conversion
-      ctr: Number((Math.random() * 2 + 1).toFixed(2)) // 1-3% CTR
-    })
-  }
-  
-  return data
+  loading?: boolean
 }
 
 const formatCurrency = (value: number) => {
@@ -76,18 +53,13 @@ export function PerformanceChart({
   data, 
   timeframe = '30d', 
   metric = 'spend',
-  height = 300 
+  height = 300,
+  loading = false
 }: PerformanceChartProps) {
   
   const chartData = useMemo(() => {
-    if (data && data.length > 0) {
-      return data
-    }
-    
-    // Use mock data for now - in production this will be real Meta API data
-    const days = timeframe === '7d' ? 7 : timeframe === '30d' ? 30 : 90
-    return generateMockData(days)
-  }, [data, timeframe])
+    return data
+  }, [data])
 
   const formatTooltipLabel = (label: string) => {
     try {
@@ -138,6 +110,26 @@ export function PerformanceChart({
   }
 
   const metricConfig = getMetricConfig()
+
+  if (loading) {
+    return (
+      <ResponsiveContainer width="100%" height={height}>
+        <div className="flex items-center justify-center h-full">
+          <div className="text-muted-foreground">Loading chart data...</div>
+        </div>
+      </ResponsiveContainer>
+    )
+  }
+
+  if (!chartData || chartData.length === 0) {
+    return (
+      <ResponsiveContainer width="100%" height={height}>
+        <div className="flex items-center justify-center h-full">
+          <div className="text-muted-foreground">No data available</div>
+        </div>
+      </ResponsiveContainer>
+    )
+  }
 
   // For spend and revenue, use area chart for better visual impact
   if (metric === 'spend') {

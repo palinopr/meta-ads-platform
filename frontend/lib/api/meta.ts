@@ -206,4 +206,68 @@ export class MetaAPI {
       return { data: null, error: error.message };
     }
   }
+
+  async getDashboardMetrics(): Promise<MetaAPIResponse<DashboardMetrics | null>> {
+    try {
+      const { data, error } = await this.supabaseClient.functions.invoke('get-dashboard-metrics', {
+        body: {}
+      });
+
+      if (error) {
+        return { data: null, error: error.message };
+      }
+
+      return { data: data || null, success: true };
+    } catch (error: any) {
+      return { data: null, error: error.message };
+    }
+  }
+
+  async getChartData(accountId: string, datePreset?: string): Promise<MetaAPIResponse<ChartDataPoint[]>> {
+    try {
+      const { data, error } = await this.supabaseClient.functions.invoke('get-chart-data', {
+        body: { 
+          account_id: accountId,
+          date_preset: datePreset || 'last_30d'
+        }
+      });
+
+      if (error) {
+        return { data: [], error: error.message };
+      }
+
+      return { data: data?.data || [], success: true };
+    } catch (error: any) {
+      return { data: [], error: error.message };
+    }
+  }
+}
+
+export interface DashboardMetrics {
+  totalSpend: number;
+  totalClicks: number;
+  totalImpressions: number;
+  averageRoas: number;
+  activeCampaigns: number;
+  totalConversions: number;
+  averageCTR: number;
+  averageCPC: number;
+  performanceChange: {
+    spend: number;
+    roas: number;
+    ctr: number;
+  };
+  lastUpdated: string;
+}
+
+export interface ChartDataPoint {
+  date: string;
+  spend: number;
+  revenue: number;
+  roas: number;
+  conversions: number;
+  cpc: number;
+  ctr: number;
+  impressions: number;
+  clicks: number;
 }
