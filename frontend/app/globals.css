@@ -57,3 +57,59 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer components {
+  /* Professional Dashboard Styles */
+  .dashboard-container {
+    @apply min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30;
+  }
+  
+  .dashboard-container.dark {
+    @apply bg-gradient-to-br from-gray-900 via-gray-800 to-blue-900/20;
+  }
+  
+  /* Enhanced Card Animations */
+  .metric-card {
+    @apply transform transition-all duration-300 ease-in-out;
+  }
+  
+  .metric-card:hover {
+    @apply scale-105 shadow-xl;
+  }
+  
+  /* Desktop-specific improvements */
+  @media (min-width: 1024px) {
+    .dashboard-grid {
+      @apply gap-8;
+    }
+    
+    .metric-card {
+      @apply min-h-[140px];
+    }
+    
+    .chart-container {
+      @apply min-h-[450px];
+    }
+  }
+  
+  /* Professional gradients for cards */
+  .gradient-card {
+    @apply bg-gradient-to-r from-white to-gray-50/80 dark:from-gray-800 dark:to-gray-900/80;
+  }
+  
+  .gradient-card-primary {
+    @apply bg-gradient-to-r from-blue-50 to-indigo-50/80 dark:from-blue-900/20 dark:to-indigo-900/20;
+  }
+  
+  .gradient-card-success {
+    @apply bg-gradient-to-r from-green-50 to-emerald-50/80 dark:from-green-900/20 dark:to-emerald-900/20;
+  }
+  
+  .gradient-card-warning {
+    @apply bg-gradient-to-r from-yellow-50 to-orange-50/80 dark:from-yellow-900/20 dark:to-orange-900/20;
+  }
+  
+  .gradient-card-danger {
+    @apply bg-gradient-to-r from-red-50 to-rose-50/80 dark:from-red-900/20 dark:to-rose-900/20;
+  }
+}

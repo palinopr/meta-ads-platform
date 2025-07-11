@@ -29,6 +29,8 @@ export function DashboardClient() {
   const [accounts, setAccounts] = useState<MetaAdAccount[]>([])
   const [selectedAccount, setSelectedAccount] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [chartError, setChartError] = useState<string | null>(null)
+  const [campaignsError, setCampaignsError] = useState<string | null>(null)
   const [chartData, setChartData] = useState<ChartDataPoint[]>([])
   const [chartLoading, setChartLoading] = useState(false)
   const [metricsLoading, setMetricsLoading] = useState(false)
@@ -43,13 +45,14 @@ export function DashboardClient() {
     loadAccounts()
   }, [])
 
-  // Auto-refresh charts every 15 minutes (900 seconds)
+  // Auto-refresh data every 15 minutes (900 seconds)
   useEffect(() => {
     if (!selectedAccount) return
 
     const interval = setInterval(() => {
-      console.log('🔄 Auto-refreshing chart data...')
+      console.log('🔄 Auto-refreshing dashboard data...')
       loadChartData(selectedAccount)
+      loadCampaigns([selectedAccount])
     }, 15 * 60 * 1000) // 15 minutes
 
     return () => clearInterval(interval)
@@ -71,6 +74,7 @@ export function DashboardClient() {
         setSelectedAccount(data[0].account_id)
         await loadMetrics(data[0].account_id)
         await loadChartData(data[0].account_id)
+        await loadCampaigns([data[0].account_id])
       }
     } catch (err) {
       setError('Failed to load ad accounts. Please connect your Meta account.')
@@ -89,7 +93,10 @@ export function DashboardClient() {
       // Fetch real metrics from Meta API for the selected account
       const response = await api.getDashboardMetrics([accountId])
       
+      console.log('📊 Dashboard metrics response:', response)
+      
       if (response.error) {
+        console.error('❌ Dashboard metrics error:', response.error)
         setError(response.error)
         setDashboardMetrics(null)
         return
@@ -130,13 +137,13 @@ export function DashboardClient() {
   const loadChartData = async (accountId: string) => {
     try {
       setChartLoading(true)
-      setError(null)
+      setChartError(null)
       
       // Fetch real chart data from Meta API
       const response = await api.getChartData(accountId)
       
       if (response.error) {
-        setError(response.error)
+        setChartError(response.error)
         setChartData([])
         return
       }
@@ -147,10 +154,37 @@ export function DashboardClient() {
       
     } catch (err) {
       console.error('Failed to load chart data:', err)
-      setError('Failed to load chart data. Please try again.')
+      setChartError('Failed to load chart data. Please try again.')
       setChartData([])
     } finally {
       setChartLoading(false)
+    }
+  }
+
+  const loadCampaigns = async (accountIds: string[]) => {
+    try {
+      setCampaignsLoading(true)
+      setCampaignsError(null)
+      
+      // Fetch real campaign data from Meta API
+      const response = await api.getTopCampaigns(accountIds, 'roas', 6, 'last_30d', 'all')
+      
+      if (response.error) {
+        setCampaignsError(response.error)
+        setCampaigns([])
+        return
+      }
+      
+      if (response.data) {
+        setCampaigns(response.data)
+      }
+      
+    } catch (err) {
+      console.error('Failed to load campaigns:', err)
+      setCampaignsError('Failed to load campaigns. Please try again.')
+      setCampaigns([])
+    } finally {
+      setCampaignsLoading(false)
     }
   }
 
@@ -168,6 +202,9 @@ export function DashboardClient() {
       
       // Step 2: Refresh chart data
       await loadChartData(selectedAccount)
+      
+      // Step 3: Refresh campaigns
+      await loadCampaigns([selectedAccount])
       
       // Data sync completed
       
@@ -190,24 +227,36 @@ export function DashboardClient() {
   }
 
   return (
-    <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
-      <div className="flex items-center justify-between space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
-        <div className="flex items-center space-x-2">
+    <div className="flex-1 space-y-8 p-4 md:p-8 pt-6">
+      <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
+        <div>
+          <h1 className="text-3xl md:text-4xl font-bold tracking-tight bg-gradient-to-r from-gray-900 to-gray-600 dark:from-gray-100 dark:to-gray-400 bg-clip-text text-transparent">
+            Dashboard
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            {accounts.length > 0 && selectedAccount ? (
+              `Viewing data for ${accounts.find(a => a.account_id === selectedAccount)?.account_name || 'Selected Account'}`
+            ) : (
+              'Overview of your Meta advertising performance'
+            )}
+          </p>
+        </div>
+        <div className="flex items-center space-x-3">
           {accounts.length > 0 && (
             <>
               <select 
-                className="px-3 py-2 border rounded-md"
+                className="px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-medium bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-all duration-200 min-w-[200px] focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 value={selectedAccount || ''}
                 onChange={async (e) => {
                   setSelectedAccount(e.target.value)
                   await loadMetrics(e.target.value)
                   await loadChartData(e.target.value)
+                  await loadCampaigns([e.target.value])
                 }}
               >
                 {accounts.map(account => (
                   <option key={account.account_id} value={account.account_id}>
-                    {account.account_name}
+                    {account.account_name} ({account.currency})
                   </option>
                 ))}
               </select>
@@ -215,6 +264,8 @@ export function DashboardClient() {
                 onClick={syncData} 
                 disabled={syncing}
                 variant="outline"
+                size="lg"
+                className="px-6 py-3 font-medium shadow-sm hover:shadow-md transition-all duration-200 border-gray-200 dark:border-gray-700"
               >
                 <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
                 Sync Data
@@ -245,63 +296,71 @@ export function DashboardClient() {
       )}
 
       {accounts.length === 0 ? (
-        <Card>
-          <CardContent className="text-center py-10">
-            <AlertCircle className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <h3 className="text-lg font-semibold mb-2">No Meta Ad Accounts Found</h3>
-            <p className="text-muted-foreground mb-4">
-              Connect your Meta account to start viewing your advertising data.
+        <Card className="border-0 shadow-lg">
+          <CardContent className="text-center py-16">
+            <AlertCircle className="h-16 w-16 mx-auto mb-6 text-muted-foreground" />
+            <h3 className="text-2xl font-bold mb-3">No Meta Ad Accounts Found</h3>
+            <p className="text-muted-foreground mb-6 text-lg max-w-md mx-auto">
+              Connect your Meta account to start viewing your advertising data and unlock powerful analytics.
             </p>
-            <Button onClick={() => window.location.href = '/settings'}>
+            <Button 
+              onClick={() => window.location.href = '/settings'}
+              size="lg"
+              className="px-8 py-3 text-lg"
+            >
               Connect Meta Account
             </Button>
           </CardContent>
         </Card>
       ) : (
         <>
-          {/* Key Metrics */}
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {/* Key Performance Metrics - Enhanced Desktop Layout */}
+          <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
             <MetricCard
               title="Total Spend"
               value={dashboardMetrics?.totalSpend || 0}
               previousValue={dashboardMetrics ? dashboardMetrics.totalSpend * 0.85 : 0}
               format="currency"
-              icon={<DollarSign className="h-5 w-5 text-muted-foreground" />}
+              icon={<DollarSign className="h-6 w-6 text-blue-500" />}
               loading={metricsLoading}
               size="large"
+              className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border-blue-200 dark:border-blue-800"
             />
             <MetricCard
               title="ROAS"
               value={dashboardMetrics?.averageRoas || 0}
               previousValue={dashboardMetrics ? dashboardMetrics.averageRoas * 0.95 : 0}
               format="number"
-              icon={<TrendingUp className="h-5 w-5 text-muted-foreground" />}
+              icon={<TrendingUp className="h-6 w-6 text-green-500" />}
               loading={metricsLoading}
               size="large"
+              className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 border-green-200 dark:border-green-800"
             />
             <MetricCard
               title="Conversions"
               value={dashboardMetrics?.totalConversions || 0}
               previousValue={dashboardMetrics ? dashboardMetrics.totalConversions * 0.9 : 0}
               format="number"
-              icon={<ShoppingCart className="h-5 w-5 text-muted-foreground" />}
+              icon={<ShoppingCart className="h-6 w-6 text-purple-500" />}
               loading={metricsLoading}
               size="large"
+              className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 border-purple-200 dark:border-purple-800"
             />
             <MetricCard
               title="Cost Per Click"
               value={dashboardMetrics?.averageCPC || 0}
               previousValue={dashboardMetrics ? dashboardMetrics.averageCPC * 1.05 : 0}
               format="currency"
-              icon={<Target className="h-5 w-5 text-muted-foreground" />}
+              icon={<Target className="h-6 w-6 text-orange-500" />}
               invertTrend={true}
               loading={metricsLoading}
               size="large"
+              className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 border-orange-200 dark:border-orange-800"
             />
           </div>
 
-          {/* Secondary Metrics */}
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {/* Secondary Metrics - Improved Layout */}
+          <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
             <MetricCard
               title="Impressions"
               value={dashboardMetrics?.totalImpressions || 0}
@@ -310,6 +369,7 @@ export function DashboardClient() {
               icon={<Eye className="h-5 w-5 text-muted-foreground" />}
               loading={metricsLoading}
               size="medium"
+              className="hover:shadow-lg transition-all duration-200"
             />
             <MetricCard
               title="Clicks"
@@ -319,6 +379,7 @@ export function DashboardClient() {
               icon={<MousePointerClick className="h-5 w-5 text-muted-foreground" />}
               loading={metricsLoading}
               size="medium"
+              className="hover:shadow-lg transition-all duration-200"
             />
             <MetricCard
               title="Click-Through Rate"
@@ -328,6 +389,7 @@ export function DashboardClient() {
               icon={<BarChart3 className="h-5 w-5 text-muted-foreground" />}
               loading={metricsLoading}
               size="medium"
+              className="hover:shadow-lg transition-all duration-200"
             />
             <MetricCard
               title="Active Campaigns"
@@ -337,6 +399,7 @@ export function DashboardClient() {
               icon={<Users className="h-5 w-5 text-muted-foreground" />}
               loading={metricsLoading}
               size="medium"
+              className="hover:shadow-lg transition-all duration-200"
             />
           </div>
 
@@ -375,9 +438,10 @@ export function DashboardClient() {
               </CardHeader>
               <CardContent>
                 <TopCampaigns 
-                  campaigns={[]} // TODO: Fetch actual campaign data
+                  campaigns={campaigns}
                   maxItems={6}
                   sortBy="roas"
+                  loading={campaignsLoading}
                 />
               </CardContent>
             </Card>

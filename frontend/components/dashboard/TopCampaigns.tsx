@@ -9,7 +9,7 @@ import Link from 'next/link'
 interface Campaign {
   id: string
   name: string
-  status: 'ACTIVE' | 'PAUSED' | 'COMPLETED'
+  status: 'ACTIVE' | 'PAUSED' | 'COMPLETED' | 'UNKNOWN'
   spend: number
   revenue: number
   roas: number
@@ -42,6 +42,8 @@ const getStatusColor = (status: Campaign['status']) => {
     case 'PAUSED':
       return 'bg-yellow-100 text-yellow-800 border-yellow-200'
     case 'COMPLETED':
+      return 'bg-gray-100 text-gray-800 border-gray-200'
+    case 'UNKNOWN':
       return 'bg-gray-100 text-gray-800 border-gray-200'
     default:
       return 'bg-gray-100 text-gray-800 border-gray-200'

@@ -14,6 +14,8 @@ interface MetricCardProps {
   trend?: 'up' | 'down' | 'neutral'
   loading?: boolean
   invertTrend?: boolean // For metrics where down is good (e.g., CPC, CPA)
+  size?: 'small' | 'medium' | 'large'
+  className?: string
 }
 
 export function MetricCard({ 
@@ -24,7 +26,9 @@ export function MetricCard({
   icon,
   trend,
   loading = false,
-  invertTrend = false
+  invertTrend = false,
+  size = 'medium',
+  className
 }: MetricCardProps) {
   const formattedValue = () => {
     if (typeof value === 'string') return value
@@ -131,7 +135,8 @@ export function MetricCard({
       "border-0 shadow-md bg-gradient-to-br from-white to-gray-50/50",
       "dark:from-gray-900 dark:to-gray-800/50 dark:shadow-gray-900/20",
       config && percentageChange !== null && `${config.bgColor} ${config.borderColor} border`,
-      currentSizeConfig.card
+      currentSizeConfig.card,
+      className
     )}>
       <CardHeader className={cn(
         "flex flex-row items-center justify-between space-y-0",

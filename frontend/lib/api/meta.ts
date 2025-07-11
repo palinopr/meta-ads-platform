@@ -227,7 +227,7 @@ export class MetaAPI {
 
   async getChartData(accountId: string, datePreset?: string): Promise<MetaAPIResponse<ChartDataPoint[]>> {
     try {
-      const { data, error } = await this.supabaseClient.functions.invoke('get-chart-data', {
+      const { data, error } = await this.supabaseClient.functions.invoke('get-performance-chart-data', {
         body: { 
           account_id: accountId,
           date_preset: datePreset || 'last_30d'
